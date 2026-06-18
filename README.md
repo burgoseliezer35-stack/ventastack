@@ -38,6 +38,16 @@ conectado a Supabase:
 
 ## Sobre el diseño (cambió otra vez, a propósito)
 
+Paleta cian (nuevo) — cambiaste de opinión sobre los colores
+después de ver una captura de referencia, y elegiste copiar esa
+paleta cian en vez de la que ya teníamos. El cambio está en un
+solo lugar: `app/globals.css` — como toda la app usa esas mismas
+variables (`bg-primario`, `text-ink`, etc.) en vez de colores
+sueltos, este único archivo repinta TODAS las pantallas a la vez,
+sin tener que tocar cada una por separado. La estructura (tablas,
+tarjetas, botones) sigue igual por ahora — eso es un cambio más
+grande, pendiente para cuando quieras seguirle.
+
 Le diste vuelta al diseño: ahora es un menú lateral (sidebar) en
 vez de la barra de arriba, con tarjetas de conteo en el dashboard,
 en una paleta gris/petróleo en vez del vino de la vuelta pasada.
@@ -546,7 +556,28 @@ Para que el cron del resumen diario funcione, hay que agregar
 `CRON_SECRET` en Vercel — es lo que evita que cualquiera en
 internet pueda llamar a esa ruta y disparar el resumen él mismo.
 
-## Pasos para correrlo (en tu computadora)
+## Punto de Venta y Catálogo, en formato de tabla (nuevo)
+
+Ambas pantallas cambiaron de las tarjetas/listas de antes a un layout de
+tabla, como en la captura de referencia que mandaste. Mismo motor
+por debajo (nada de la lógica cambió), solo se ve distinto:
+
+- Punto de Venta: el carrito ahora es una tabla de verdad, con un
+  panel de cobro a un lado. Se agregó algo que no existía:
+  "Efectivo recibido" y cálculo de cambio — si el efectivo no
+  alcanza, el botón de Cobrar se bloquea solo.
+- Catálogo: "Agregar producto" ahora es una ventana modal en vez
+  de un formulario fijo en la página. La tabla agrega Costo y
+  Utilidad (ya los teníamos guardados, solo no se mostraban), y
+  las filas con stock por debajo de tu umbral configurado se
+  marcan en rojo automáticamente. Hay un buscador en vivo arriba
+  de la tabla.
+
+Probé el cálculo de cambio/vuelto de forma aislada (pago exacto,
+de más, insuficiente, campo vacío, método distinto a efectivo) —
+los cinco casos salieron correctos.
+
+
 
 (Nota: si ya tenías este proyecto corriendo, esto no cambió desde
 la vuelta anterior, salvo el paso 1: hay migración nueva, la 011.)
@@ -699,6 +730,10 @@ la vuelta anterior, salvo el paso 1: hay migración nueva, la 011.)
   caja ya hecho.
 - components/auditoria-caja.tsx — el botón y resultado de la
   auditoría, en el detalle de una caja cerrada.
+- components/tabla-catalogo.tsx — la tabla con buscador y el
+  resaltado en rojo de stock bajo, en Catálogo.
+- components/modal-agregar-producto.tsx — la ventana modal de
+  "Agregar producto", en vez del formulario fijo de antes.
 - app/protected/rutas — el mapa en vivo de la flotilla, solo
   admin (usa components/mapa-flotilla.tsx, con Leaflet).
 - components/compartir-ubicacion.tsx — montado solo para
