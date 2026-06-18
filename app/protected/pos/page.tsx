@@ -38,7 +38,7 @@ export default async function PosPage() {
     .order("nombre");
 
   return (
-    <div className="flex flex-col items-center gap-6">
+    <div className="flex flex-col gap-6">
       <h1 className="text-xl font-bold text-ink">Punto de venta</h1>
 
       {productos.length ? (
@@ -48,7 +48,7 @@ export default async function PosPage() {
           geminiDisponible={geminiDisponible()}
         />
       ) : (
-        <p className="max-w-sm text-center text-sm text-ink/60">
+        <p className="max-w-sm text-sm text-ink/60">
           Todavía no tienes productos en tu catálogo. Agrega al menos uno en{" "}
           <Link href="/protected/productos" className="text-primario hover:underline">
             Catálogo
