@@ -779,6 +779,23 @@ respuesta con curl — en páginas normales, en la redirección de
 sesión, y en una ruta de API — los seis headers aparecen en los
 tres casos, y nada se rompió.
 
+## Crear cuentas directo, sin correo (cambió)
+
+"Equipo" y "Dar de alta un negocio nuevo" (reseller) ya NO mandan
+un correo de invitación — ahora el admin (o el reseller) escribe
+el nombre completo, el correo, y una contraseña, y la cuenta queda
+lista para entrar de inmediato. Se la compartes tú mismo a esa
+persona.
+
+Por qué: el correo de prueba de Supabase solo deja mandar 2 por
+hora, y ni siquiera le llega a alguien fuera de tu propio equipo
+de Supabase — no servía para esto. Por debajo sigue siendo el
+mismo trigger de antes (`manejar_alta_de_usuario`, migración 005),
+solo que ahora se usa `admin.createUser()` con la contraseña en
+vez de `inviteUserByEmail()`. Probé que el trigger lea bien el
+nombre, el rol, y la empresa con estos metadatos nuevos — salió
+correcto.
+
 ## Pendiente para otra sesión
 
 Con esta vuelta, todo el módulo original de funciones quedó
