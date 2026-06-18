@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+/*
+  Sistema de diseño de Ventastack — paleta cian, como en la
+  referencia que mandaste (estilo panel de administración clásico).
+*/
+
+:root {
+  --color-paper: #f1f3f5;
+  --color-ink: #212529;
+  --color-primario: #17a2b8;
+  --color-primario-suave: #d2eef2;
+  --color-verde: #28a745;
+  --color-verde-suave: #d4edda;
+  --color-linea: #dee2e6;
+}
+
+@theme inline {
+  --color-paper: var(--color-paper);
+  --color-ink: var(--color-ink);
+  --color-primario: var(--color-primario);
+  --color-primario-suave: var(--color-primario-suave);
+  --color-verde: var(--color-verde);
+  --color-verde-suave: var(--color-verde-suave);
+  --color-linea: var(--color-linea);
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: "SF Mono", "Courier New", monospace;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+/* Cantidades de dinero, siempre en monoespaciada (más fácil de
+   leer en columnas, como en una caja registradora). */
+.cifra {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Insignia de rol — pastilla sólida, como el "ADMIN" de tu
+   referencia. */
+.insignia {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+}
