@@ -69,26 +69,26 @@ export function ImportarExcel() {
   };
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-4">
-      <h2 className="text-sm font-medium text-gray-700">
+    <div className="flex flex-col gap-3 rounded-lg border border-linea bg-white p-4">
+      <h2 className="text-sm font-medium text-ink">
         Importar catálogo desde Excel
       </h2>
-      <p className="text-xs text-gray-400">
+      <p className="text-xs text-ink/50">
         El archivo necesita columnas llamadas &quot;nombre&quot; y &quot;precio&quot;.
       </p>
       <input
         type="file"
         accept=".xlsx,.xls"
         onChange={leerArchivo}
-        className="text-sm text-gray-700"
+        className="text-sm text-ink"
       />
 
       {filas.length > 0 && (
         <div className="flex flex-col gap-2">
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-ink/60">
             Se encontraron {filas.length} productos. Revisa antes de confirmar:
           </p>
-          <ul className="max-h-40 overflow-y-auto text-xs text-gray-600">
+          <ul className="max-h-40 overflow-y-auto text-xs text-ink/70">
             {filas.slice(0, 10).map((f, i) => (
               <li key={i}>
                 {f.nombre} — ${f.precio.toFixed(2)}
@@ -100,7 +100,7 @@ export function ImportarExcel() {
             type="button"
             onClick={confirmarImportacion}
             disabled={isLoading}
-            className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:opacity-50"
+            className="rounded-md bg-verde px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50"
           >
             {isLoading
               ? "Importando..."
@@ -110,7 +110,7 @@ export function ImportarExcel() {
       )}
 
       {error && <p className="text-sm text-red-600">{error}</p>}
-      {mensaje && <p className="text-sm text-emerald-600">{mensaje}</p>}
+      {mensaje && <p className="text-sm text-verde">{mensaje}</p>}
     </div>
   );
 }

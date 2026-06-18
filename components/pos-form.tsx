@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useState, useRef, type KeyboardEvent } from "react";
+import { Mic, Square, ShoppingCart, Trash2, Lightbulb, ScanLine } from "lucide-react";
 
 type NivelMayoreo = { cantidad_minima: number; precio_unitario: number };
 type Producto = {
@@ -45,6 +46,7 @@ export function PosForm({
   const [codigoBarras, setCodigoBarras] = useState("");
   const [clienteId, setClienteId] = useState("");
   const [metodoPago, setMetodoPago] = useState("efectivo");
+  const [efectivoRecibido, setEfectivoRecibido] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -292,6 +294,15 @@ export function PosForm({
     0,
   );
 
+  // Solo tiene sentido cuando el cajero de verdad escribió un
+  // monto — si lo deja vacío, no mostramos ni bloqueamos nada (a
+  // veces el pago es exacto y no hace falta calcular nada).
+  const cambio =
+    metodoPago === "efectivo" && efectivoRecibido !== ""
+      ? Number(efectivoRecibido) - total
+      : null;
+  const faltaEfectivo = cambio !== null && cambio < 0;
+
   const cobrar = async () => {
     setError(null);
 
@@ -301,6 +312,10 @@ export function PosForm({
     }
     if (metodoPago === "credito" && !clienteId) {
       setError("Una venta a crédito necesita un cliente seleccionado");
+      return;
+    }
+    if (faltaEfectivo) {
+      setError("El efectivo recibido es menor que el total");
       return;
     }
 
@@ -345,53 +360,33 @@ export function PosForm({
   };
 
   return (
-    <div className="flex w-full max-w-sm flex-col gap-6">
-      <div className="flex flex-col gap-2 rounded-lg border border-linea bg-white p-4">
-        <label htmlFor="codigoBarras" className="text-sm font-medium text-ink">
-          Buscar por código de barras
-        </label>
-        <input
-          id="codigoBarras"
-          type="text"
-          value={codigoBarras}
-          onChange={(e) => setCodigoBarras(e.target.value)}
-          onKeyDown={buscarPorCodigoBarras}
-          placeholder="Escanea o escribe y presiona Enter"
-          className="w-full rounded-md border border-linea px-3 py-2 text-ink focus:border-primario focus:outline-none"
-        />
-      </div>
-
-      {geminiDisponible && (
-        <div className="flex flex-col gap-2 rounded-lg border border-linea bg-white p-4">
-          <span className="text-sm font-medium text-ink">Hablar el pedido</span>
-          <button
-            type="button"
-            onClick={grabando ? detenerGrabacion : iniciarGrabacion}
-            disabled={procesandoVoz}
-            className={`w-full rounded-md px-4 py-2 text-sm font-medium text-white transition disabled:opacity-50 ${
-              grabando ? "bg-red-600 hover:opacity-90" : "bg-primario hover:opacity-90"
-            }`}
-          >
-            {procesandoVoz
-              ? "Entendiendo lo que dijiste..."
-              : grabando
-                ? "⏹ Detener grabación"
-                : "🎤 Hablar pedido"}
-          </button>
-          {aviso && <p className="text-xs text-emerald-700">{aviso}</p>}
+    <div className="flex w-full max-w-5xl flex-col gap-4">
+      {/* Barra superior: código de barras, selector de producto, voz */}
+      <div className="flex flex-col gap-3 rounded-xl border border-linea bg-white p-4 shadow-sm sm:flex-row sm:items-end">
+        <div className="flex-1">
+          <label htmlFor="codigoBarras" className="mb-1 block text-xs font-medium uppercase tracking-wide text-ink/50">
+            Código de barras
+          </label>
+          <div className="flex items-center gap-2 rounded-md border border-linea px-3 focus-within:border-primario">
+            <ScanLine size={16} className="text-ink/40" />
+            <input
+              id="codigoBarras"
+              type="text"
+              value={codigoBarras}
+              onChange={(e) => setCodigoBarras(e.target.value)}
+              onKeyDown={buscarPorCodigoBarras}
+              placeholder="Escanea o escribe y presiona Enter"
+              className="w-full py-2 text-sm text-ink outline-none"
+            />
+          </div>
         </div>
-      )}
 
-      <div className="flex flex-col gap-2 rounded-lg border border-linea bg-white p-4">
-        <label htmlFor="producto" className="text-sm font-medium text-ink">
-          Agregar producto
-        </label>
-        <div className="flex gap-2">
+        <div className="flex flex-[2] gap-2">
           <select
             id="producto"
             value={productoSeleccionado}
             onChange={(e) => setProductoSeleccionado(e.target.value)}
-            className="flex-1 rounded-md border border-linea px-3 py-2 text-ink focus:border-primario focus:outline-none"
+            className="flex-1 rounded-md border border-linea px-3 py-2 text-sm text-ink focus:border-primario focus:outline-none"
           >
             {productos.map((p) => (
               <option key={p.id} value={p.id} disabled={p.stock <= 0}>
@@ -409,130 +404,216 @@ export function PosForm({
             Agregar
           </button>
         </div>
+
+        {geminiDisponible && (
+          <button
+            type="button"
+            onClick={grabando ? detenerGrabacion : iniciarGrabacion}
+            disabled={procesandoVoz}
+            className={`flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-white transition disabled:opacity-50 ${
+              grabando ? "bg-red-600 hover:opacity-90" : "bg-primario hover:opacity-90"
+            }`}
+          >
+            {grabando ? <Square size={15} /> : <Mic size={15} />}
+            {procesandoVoz ? "Entendiendo..." : grabando ? "Detener" : "Hablar pedido"}
+          </button>
+        )}
       </div>
 
-      <div className="rounded-lg border border-linea bg-white p-4">
-        <h2 className="mb-3 text-sm font-medium text-ink">Carrito</h2>
-        {carrito.length === 0 ? (
-          <p className="text-sm text-ink/40">Vacío</p>
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {carrito.map((item) => (
-              <li
-                key={item.producto_id}
-                className="flex items-center justify-between gap-2 text-sm"
-              >
-                <span className="flex-1 text-ink">{item.nombre}</span>
-                <input
-                  type="number"
-                  min={1}
-                  max={item.stock_disponible}
-                  value={item.cantidad}
-                  onChange={(e) =>
-                    cambiarCantidad(item.producto_id, Number(e.target.value))
-                  }
-                  className="w-14 rounded-md border border-linea px-2 py-1 text-center"
-                />
-                <span className="cifra w-16 text-right text-ink/70">
-                  ${(item.precio_unitario * item.cantidad).toFixed(2)}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => quitarDelCarrito(item.producto_id)}
-                  className="text-red-500 hover:underline"
-                >
-                  Quitar
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        <div className="mt-3 flex justify-between border-t border-linea pt-3 text-sm font-semibold text-ink">
-          <span>Total</span>
-          <span className="cifra">${total.toFixed(2)}</span>
-        </div>
+      {aviso && (
+        <p className="rounded-md bg-verde-suave px-3 py-2 text-sm text-verde">{aviso}</p>
+      )}
 
-        {geminiDisponible && carrito.length > 0 && (
-          <div className="mt-3 border-t border-linea pt-3">
-            <button
-              type="button"
-              onClick={pedirSugerencias}
-              disabled={procesandoUpsell}
-              className="text-xs text-primario hover:underline disabled:opacity-50"
-            >
-              {procesandoUpsell ? "Pensando..." : "💡 Sugerir algo más"}
-            </button>
-            {sugerencias.length > 0 && (
-              <ul className="mt-2 flex flex-col gap-2">
-                {sugerencias.map((s) => (
-                  <li
-                    key={s.producto_id}
-                    className="flex items-center justify-between gap-2 rounded-md bg-paper px-3 py-2 text-xs"
-                  >
-                    <span className="text-ink">
-                      {s.nombre} <span className="text-ink/50">— {s.razon}</span>
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => agregarSugerencia(s.producto_id)}
-                      className="shrink-0 text-primario hover:underline"
-                    >
-                      Agregar
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
+      <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
+        {/* Columna del carrito */}
+        <div className="overflow-hidden rounded-xl border border-linea bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-linea bg-primario-suave px-4 py-3">
+            <h2 className="flex items-center gap-2 font-semibold text-ink">
+              <ShoppingCart size={18} className="text-primario" />
+              Carrito
+            </h2>
+            <span className="text-xs text-ink/50">
+              {carrito.length} producto{carrito.length === 1 ? "" : "s"}
+            </span>
           </div>
-        )}
-      </div>
 
-      <div className="flex flex-col gap-3 rounded-lg border border-linea bg-white p-4">
-        <div>
-          <label htmlFor="cliente" className="block text-sm font-medium text-ink">
-            Cliente (opcional)
-          </label>
-          <select
-            id="cliente"
-            value={clienteId}
-            onChange={(e) => setClienteId(e.target.value)}
-            className="mt-1 w-full rounded-md border border-linea px-3 py-2 text-ink focus:border-primario focus:outline-none"
-          >
-            <option value="">Público general</option>
-            {clientes.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nombre}
-              </option>
-            ))}
-          </select>
+          {carrito.length === 0 ? (
+            <p className="px-4 py-10 text-center text-sm text-ink/40">
+              Agrega productos para empezar una venta
+            </p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-primario text-left text-xs font-semibold uppercase tracking-wide text-white">
+                  <th className="px-4 py-2.5">Producto</th>
+                  <th className="px-4 py-2.5">Cant.</th>
+                  <th className="px-4 py-2.5 text-right">Precio</th>
+                  <th className="px-4 py-2.5 text-right">Subtotal</th>
+                  <th className="px-4 py-2.5"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-linea">
+                {carrito.map((item, idx) => (
+                  <tr key={item.producto_id} className={idx % 2 === 1 ? "bg-paper/60" : ""}>
+                    <td className="px-4 py-2.5 text-ink">{item.nombre}</td>
+                    <td className="px-4 py-2.5">
+                      <input
+                        type="number"
+                        min={1}
+                        max={item.stock_disponible}
+                        value={item.cantidad}
+                        onChange={(e) =>
+                          cambiarCantidad(item.producto_id, Number(e.target.value))
+                        }
+                        className="w-16 rounded-md border border-linea px-2 py-1 text-center"
+                      />
+                    </td>
+                    <td className="cifra px-4 py-2.5 text-right text-ink/70">
+                      ${item.precio_unitario.toFixed(2)}
+                    </td>
+                    <td className="cifra px-4 py-2.5 text-right font-medium text-ink">
+                      ${(item.precio_unitario * item.cantidad).toFixed(2)}
+                    </td>
+                    <td className="px-4 py-2.5 text-right">
+                      <button
+                        type="button"
+                        onClick={() => quitarDelCarrito(item.producto_id)}
+                        className="text-red-500 hover:text-red-700"
+                        aria-label={`Quitar ${item.nombre}`}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          {geminiDisponible && carrito.length > 0 && (
+            <div className="border-t border-linea px-4 py-3">
+              <button
+                type="button"
+                onClick={pedirSugerencias}
+                disabled={procesandoUpsell}
+                className="flex items-center gap-1.5 text-xs font-medium text-primario hover:underline disabled:opacity-50"
+              >
+                <Lightbulb size={14} />
+                {procesandoUpsell ? "Pensando..." : "Sugerir algo más"}
+              </button>
+              {sugerencias.length > 0 && (
+                <ul className="mt-2 flex flex-col gap-2">
+                  {sugerencias.map((s) => (
+                    <li
+                      key={s.producto_id}
+                      className="flex items-center justify-between gap-2 rounded-md bg-paper px-3 py-2 text-xs"
+                    >
+                      <span className="text-ink">
+                        {s.nombre} <span className="text-ink/50">— {s.razon}</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => agregarSugerencia(s.producto_id)}
+                        className="shrink-0 font-medium text-primario hover:underline"
+                      >
+                        Agregar
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </div>
 
-        <div>
-          <label htmlFor="metodoPago" className="block text-sm font-medium text-ink">
-            Método de pago
-          </label>
-          <select
-            id="metodoPago"
-            value={metodoPago}
-            onChange={(e) => setMetodoPago(e.target.value)}
-            className="mt-1 w-full rounded-md border border-linea px-3 py-2 text-ink focus:border-primario focus:outline-none"
+        {/* Columna de cobro */}
+        <div className="flex h-fit flex-col gap-4 rounded-xl bg-primario p-5 text-white shadow-sm">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-white/70">Total a cobrar</p>
+            <p className="cifra text-3xl font-bold">${total.toFixed(2)}</p>
+          </div>
+
+          <div>
+            <label htmlFor="cliente" className="mb-1 block text-xs font-medium text-white/80">
+              Cliente
+            </label>
+            <select
+              id="cliente"
+              value={clienteId}
+              onChange={(e) => setClienteId(e.target.value)}
+              className="w-full rounded-md border border-white/20 bg-white/10 px-3 py-2 text-sm text-white outline-none [&>option]:text-ink"
+            >
+              <option value="">Público general</option>
+              {clientes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="metodoPago" className="mb-1 block text-xs font-medium text-white/80">
+              Método de pago
+            </label>
+            <select
+              id="metodoPago"
+              value={metodoPago}
+              onChange={(e) => {
+                setMetodoPago(e.target.value);
+                setEfectivoRecibido("");
+              }}
+              className="w-full rounded-md border border-white/20 bg-white/10 px-3 py-2 text-sm text-white outline-none [&>option]:text-ink"
+            >
+              <option value="efectivo">Efectivo</option>
+              <option value="transferencia">Transferencia</option>
+              <option value="credito">Crédito</option>
+            </select>
+          </div>
+
+          {metodoPago === "efectivo" && (
+            <div>
+              <label htmlFor="efectivoRecibido" className="mb-1 block text-xs font-medium text-white/80">
+                Efectivo recibido
+              </label>
+              <input
+                id="efectivoRecibido"
+                type="number"
+                min={0}
+                step="0.01"
+                value={efectivoRecibido}
+                onChange={(e) => setEfectivoRecibido(e.target.value)}
+                placeholder={total > 0 ? total.toFixed(2) : "0.00"}
+                className="w-full rounded-md border border-white/20 bg-white/10 px-3 py-2 text-sm text-white outline-none placeholder:text-white/40"
+              />
+              {cambio !== null && (
+                <div
+                  className={`mt-2 flex justify-between rounded-md px-3 py-2 text-sm ${
+                    faltaEfectivo ? "bg-red-500/30" : "bg-white/15"
+                  }`}
+                >
+                  <span>{faltaEfectivo ? "Falta" : "Cambio"}</span>
+                  <span className="cifra font-bold">
+                    ${Math.abs(cambio).toFixed(2)}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {error && (
+            <p className="rounded-md bg-red-500/20 px-3 py-2 text-sm text-white">{error}</p>
+          )}
+
+          <button
+            type="button"
+            onClick={cobrar}
+            disabled={isLoading || faltaEfectivo}
+            className="w-full rounded-md bg-white py-3 font-semibold text-primario transition hover:opacity-90 disabled:opacity-50"
           >
-            <option value="efectivo">Efectivo</option>
-            <option value="transferencia">Transferencia</option>
-            <option value="credito">Crédito</option>
-          </select>
+            {isLoading ? "Cobrando..." : "Cobrar"}
+          </button>
         </div>
-
-        {error && <p className="text-sm text-red-600">{error}</p>}
-
-        <button
-          type="button"
-          onClick={cobrar}
-          disabled={isLoading}
-          className="w-full rounded-md bg-primario px-4 py-2 font-medium text-white transition hover:opacity-90 disabled:opacity-50"
-        >
-          {isLoading ? "Cobrando..." : "Cobrar"}
-        </button>
       </div>
     </div>
   );
