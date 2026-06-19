@@ -17,7 +17,7 @@ export function GestionEquipo({
   equipo: Miembro[];
   companyId: string;
 }) {
-  const [lista, setLista] = useState<Miembro[]>(equipo);
+  const lista = equipo;
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -48,15 +48,10 @@ export function GestionEquipo({
 
     if (!res.ok) { setError(body.error); return; }
 
-    const nuevo: Miembro = {
-      id: crypto.randomUUID(),
-      full_name: fullName.trim(),
-      username: username.trim(),
-      role,
-    };
-    setLista((prev) => [...prev, nuevo]);
     setFullName(""); setUsername(""); setPassword("");
-    setMensaje(`Cuenta "${username}" creada. Comparte el usuario y la contraseña con esa persona.`);
+    setMensaje(`Cuenta "${username}" creada.`);
+    // Refrescar la página para traer la lista real de la base de datos
+    window.location.reload();
   };
 
   const guardarEdicion = async (id: string) => {
@@ -68,15 +63,7 @@ export function GestionEquipo({
     });
     const body = await res.json();
     if (!res.ok) { setError(body.error); return; }
-    setLista((prev) =>
-      prev.map((m) =>
-        m.id === id
-          ? { ...m, ...editData, full_name: editData.full_name ?? m.full_name, username: editData.username ?? m.username, role: editData.role ?? m.role }
-          : m,
-      ),
-    );
-    setEditandoId(null);
-    setEditData({});
+    window.location.reload();
   };
 
   const borrar = async (id: string, nombre: string) => {
@@ -85,7 +72,7 @@ export function GestionEquipo({
     const res = await fetch(`/api/usuarios/${id}`, { method: "DELETE" });
     const body = await res.json();
     if (!res.ok) { setError(body.error); return; }
-    setLista((prev) => prev.filter((m) => m.id !== id));
+    window.location.reload();
   };
 
   return (
