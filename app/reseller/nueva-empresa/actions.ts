@@ -25,10 +25,12 @@ export async function crearEmpresa(formData: FormData) {
   }
 
   const nombre = (formData.get("nombre") as string)?.trim();
+  const nombreAdmin = (formData.get("nombre_admin") as string)?.trim();
   const correoAdmin = (formData.get("correo_admin") as string)?.trim();
+  const passwordAdmin = (formData.get("password_admin") as string) ?? "";
   const precioMensual = Number(formData.get("precio_mensual") || 0);
 
-  if (!nombre || !correoAdmin) {
+  if (!nombre || !correoAdmin || !nombreAdmin || passwordAdmin.length < 6) {
     return;
   }
 
@@ -48,13 +50,21 @@ export async function crearEmpresa(formData: FormData) {
     return;
   }
 
-  // 2. Invitamos al dueño real de ese negocio como "admin" de ESA
-  // empresa específica, con la llave de administrador — igual que
-  // "Invitar a mi equipo", solo que aquí SÍ podemos elegir la
-  // empresa porque somos el reseller.
+  // 2. Creamos la cuenta del dueño real de ese negocio directo, ya
+  // lista para entrar — sin mandar ningún correo (el de prueba de
+  // Supabase tiene un límite de 2 por hora y ni le llega a alguien
+  // fuera de tu propio equipo de Supabase, así que no sirve para
+  // esto).
   const admin = createAdminClient();
-  await admin.auth.admin.inviteUserByEmail(correoAdmin, {
-    data: { company_id: empresaNueva.id, role: "admin" },
+  await admin.auth.admin.createUser({
+    email: correoAdmin,
+    password: passwordAdmin,
+    email_confirm: true,
+    user_metadata: {
+      company_id: empresaNueva.id,
+      role: "admin",
+      full_name: nombreAdmin,
+    },
   });
 
   redirect(`/reseller/empresas/${empresaNueva.id}`);

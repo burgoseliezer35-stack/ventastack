@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { email, role } = body;
+  const { email, role, password, full_name } = body;
 
   // 2. ¿A qué empresa va, y qué roles puede repartir quien invita?
   // Un admin normal SIEMPRE invita a su PROPIA empresa, sin importar
@@ -48,25 +48,37 @@ export async function POST(request: Request) {
   if (!email || !rolesPermitidos.includes(role)) {
     return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
   }
+  if (!full_name?.trim()) {
+    return NextResponse.json({ error: "Falta el nombre completo" }, { status: 400 });
+  }
+  if (!password || password.length < 6) {
+    return NextResponse.json(
+      { error: "La contraseña necesita al menos 6 caracteres" },
+      { status: 400 },
+    );
+  }
 
-  // 3. Mandamos la invitación con la llave de administrador. Le
-  // metemos company_id y role en los metadatos: el trigger del
-  // backend (005_invitar_a_equipo.sql) los lee de ahí para saber a
-  // qué empresa ligar al nuevo perfil, sin crear una empresa nueva.
+  // 3. Creamos la cuenta directo, con la contraseña que el admin
+  // eligió — sin mandar ningún correo. email_confirm:true la deja
+  // lista para entrar de inmediato, sin necesitar un enlace. Esto
+  // evita por completo el límite de correos de Supabase (2 por
+  // hora) y el hecho de que ese correo de prueba ni siquiera le
+  // llega a alguien fuera de tu propio equipo de Supabase.
   const admin = createAdminClient();
 
-  const { error: inviteError } = await admin.auth.admin.inviteUserByEmail(
+  const { error: crearError } = await admin.auth.admin.createUser({
     email,
-    {
-      data: {
-        company_id: companyId,
-        role,
-      },
+    password,
+    email_confirm: true,
+    user_metadata: {
+      company_id: companyId,
+      role,
+      full_name: full_name.trim(),
     },
-  );
+  });
 
-  if (inviteError) {
-    return NextResponse.json({ error: inviteError.message }, { status: 400 });
+  if (crearError) {
+    return NextResponse.json({ error: crearError.message }, { status: 400 });
   }
 
   return NextResponse.json({ ok: true });

@@ -8,7 +8,6 @@ import {
   Users,
   UserPlus,
   ShoppingCart,
-  Building2,
 } from "lucide-react";
 
 export default async function ProtectedPage() {
@@ -113,15 +112,6 @@ export default async function ProtectedPage() {
         )}
       </div>
 
-      {profile.es_superadmin && (
-        <Link
-          href="/reseller"
-          className="flex items-center gap-3 rounded-lg border border-dashed border-primario bg-primario-suave p-4 text-primario transition hover:opacity-80"
-        >
-          <Building2 size={20} />
-          <span className="text-sm font-medium">Panel de reseller →</span>
-        </Link>
-      )}
     </div>
   );
 }

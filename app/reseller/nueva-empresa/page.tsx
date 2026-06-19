@@ -27,6 +27,22 @@ export default function NuevaEmpresaPage() {
 
         <div>
           <label
+            htmlFor="nombre_admin"
+            className="block text-sm font-medium text-ink"
+          >
+            Nombre completo del dueño/admin
+          </label>
+          <input
+            id="nombre_admin"
+            name="nombre_admin"
+            type="text"
+            required
+            className="mt-1 w-full rounded-md border border-linea px-3 py-2 text-ink focus:border-primario focus:outline-none"
+          />
+        </div>
+
+        <div>
+          <label
             htmlFor="correo_admin"
             className="block text-sm font-medium text-ink"
           >
@@ -39,9 +55,27 @@ export default function NuevaEmpresaPage() {
             required
             className="mt-1 w-full rounded-md border border-linea px-3 py-2 text-ink focus:border-primario focus:outline-none"
           />
+        </div>
+
+        <div>
+          <label
+            htmlFor="password_admin"
+            className="block text-sm font-medium text-ink"
+          >
+            Contraseña que va a usar
+          </label>
+          <input
+            id="password_admin"
+            name="password_admin"
+            type="text"
+            required
+            minLength={6}
+            placeholder="Mínimo 6 caracteres"
+            className="mt-1 w-full rounded-md border border-linea px-3 py-2 text-ink focus:border-primario focus:outline-none"
+          />
           <p className="mt-1 text-xs text-ink/50">
-            Le va a llegar un correo para que ponga su contraseña — igual
-            que cuando invitas a alguien a tu propio equipo.
+            La cuenta queda lista de inmediato — compártele tú mismo el
+            correo y esta contraseña, no se manda ningún correo.
           </p>
         </div>
 
