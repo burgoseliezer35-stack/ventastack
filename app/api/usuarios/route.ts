@@ -75,8 +75,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: crearError.message }, { status: 400 });
   }
 
-  // Guardamos el username en el perfil que ya creó el trigger
-  await supabase
+  // Guardamos el username en el perfil que ya creó el trigger.
+  // Usamos el cliente admin porque RLS no permite que un usuario
+  // actualice el perfil de otro.
+  await admin
     .from("profiles")
     .update({ username: username.trim() })
     .eq("id", nuevoUser.user.id);

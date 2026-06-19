@@ -55,7 +55,8 @@ export async function PATCH(
   if (role && ["vendedor", "cajero"].includes(role)) updates.role = role;
 
   if (Object.keys(updates).length > 0) {
-    await check.supabase!.from("profiles").update(updates).eq("id", id);
+    const adminClient = createAdminClient();
+    await adminClient.from("profiles").update(updates).eq("id", id);
   }
 
   // Actualizar contraseña si se mandó una nueva
