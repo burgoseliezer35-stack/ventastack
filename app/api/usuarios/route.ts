@@ -59,7 +59,7 @@ export async function POST(request: Request) {
 
   const admin = createAdminClient();
 
-  const { data: nuevoUser, error: crearError } = await admin.auth.admin.createUser({
+  const { error: crearError } = await admin.auth.admin.createUser({
     email: emailTecnico,
     password,
     email_confirm: true,
@@ -74,14 +74,6 @@ export async function POST(request: Request) {
   if (crearError) {
     return NextResponse.json({ error: crearError.message }, { status: 400 });
   }
-
-  // Guardamos el username en el perfil que ya creó el trigger.
-  // Usamos el cliente admin porque RLS no permite que un usuario
-  // actualice el perfil de otro.
-  await admin
-    .from("profiles")
-    .update({ username: username.trim() })
-    .eq("id", nuevoUser.user.id);
 
   return NextResponse.json({ ok: true });
 }

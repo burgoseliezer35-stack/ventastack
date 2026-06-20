@@ -382,20 +382,35 @@ export function PosForm({
         </div>
 
         <div className="flex flex-[2] gap-2">
-          <select
-            id="producto"
-            value={productoSeleccionado}
-            onChange={(e) => setProductoSeleccionado(e.target.value)}
-            className="flex-1 rounded-md border border-linea px-3 py-2 text-sm text-ink focus:border-primario focus:outline-none"
-          >
-            {productos.map((p) => (
-              <option key={p.id} value={p.id} disabled={p.stock <= 0}>
-                {p.nombre} — ${p.precio.toFixed(2)}{" "}
-                {p.stock <= 0 ? "(sin stock)" : `(${p.stock} disp.)`}
-                {p.niveles.length > 0 ? " · tiene mayoreo" : ""}
-              </option>
-            ))}
-          </select>
+          <div className="flex flex-1 flex-col gap-1">
+            <input
+              type="text"
+              placeholder="Filtrar productos..."
+              onChange={(e) => {
+                const texto = e.target.value.toLowerCase();
+                const opts = document.querySelectorAll<HTMLOptionElement>("#productoSelect option");
+                opts.forEach((opt) => {
+                  opt.style.display = !texto || opt.text.toLowerCase().includes(texto) ? "" : "none";
+                });
+              }}
+              className="rounded-md border border-linea px-3 py-2 text-sm text-ink focus:border-primario focus:outline-none"
+            />
+            <select
+              id="productoSelect"
+              value={productoSeleccionado}
+              onChange={(e) => setProductoSeleccionado(e.target.value)}
+              className="flex-1 rounded-md border border-linea px-3 py-2 text-sm text-ink focus:border-primario focus:outline-none"
+              size={3}
+            >
+              {productos.map((p) => (
+                <option key={p.id} value={p.id} disabled={p.stock <= 0}>
+                  {p.nombre} — ${p.precio.toFixed(2)}{" "}
+                  {p.stock <= 0 ? "(sin stock)" : `(${p.stock})`}
+                  {p.niveles.length > 0 ? " · mayoreo" : ""}
+                </option>
+              ))}
+            </select>
+          </div>
           <button
             type="button"
             onClick={agregarAlCarrito}
