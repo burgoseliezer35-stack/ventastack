@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useState, useRef, type KeyboardEvent } from "react";
-import { Mic, Square, ShoppingCart, Trash2, Lightbulb, ScanLine } from "lucide-react";
+import { Mic, ShoppingCart, Trash2, Lightbulb, ScanLine } from "lucide-react";
 
 type NivelMayoreo = { cantidad_minima: number; precio_unitario: number };
 type Producto = {
@@ -423,14 +423,26 @@ export function PosForm({
         {geminiDisponible && (
           <button
             type="button"
-            onClick={grabando ? detenerGrabacion : iniciarGrabacion}
+            onPointerDown={(e) => {
+              e.currentTarget.setPointerCapture(e.pointerId);
+              iniciarGrabacion();
+            }}
+            onPointerUp={detenerGrabacion}
+            onPointerLeave={detenerGrabacion}
             disabled={procesandoVoz}
-            className={`flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-white transition disabled:opacity-50 ${
-              grabando ? "bg-red-600 hover:opacity-90" : "bg-primario hover:opacity-90"
+            className={`flex items-center justify-center gap-2 rounded-md px-4 py-3 text-sm font-medium text-white transition select-none disabled:opacity-50 ${
+              grabando
+                ? "bg-red-600 scale-95"
+                : "bg-primario hover:opacity-90 active:scale-95"
             }`}
+            style={{ touchAction: "none" }}
           >
-            {grabando ? <Square size={15} /> : <Mic size={15} />}
-            {procesandoVoz ? "Entendiendo..." : grabando ? "Detener" : "Hablar pedido"}
+            <Mic size={15} />
+            {procesandoVoz
+              ? "Entendiendo..."
+              : grabando
+              ? "🔴 Grabando..."
+              : "Mantén para hablar"}
           </button>
         )}
       </div>

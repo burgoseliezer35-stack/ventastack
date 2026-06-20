@@ -40,7 +40,7 @@ export default async function ConfiguracionPage({
 
   const { data: empresa } = await supabase
     .from("companies")
-    .select("id, whatsapp_admin, umbral_stock_bajo")
+    .select("id, whatsapp_admin, umbral_stock_bajo, slug")
     .eq("id", miPerfil.company_id)
     .single();
 
@@ -71,6 +71,27 @@ export default async function ConfiguracionPage({
           action={guardarConfiguracion.bind(null, empresa.id)}
           className="flex flex-col gap-4"
         >
+          <div>
+            <label htmlFor="slug" className="block text-sm font-medium text-ink">
+              URL corta de acceso
+            </label>
+            <div className="mt-1 flex items-center gap-2">
+              <span className="text-sm text-ink/50">ventastack.vercel.app/auth/vendedor?empresa=</span>
+              <input
+                id="slug"
+                name="slug"
+                type="text"
+                defaultValue={empresa.slug ?? ""}
+                placeholder="mitienda"
+                pattern="[a-z0-9-]+"
+                className="w-32 rounded-md border border-linea px-3 py-2 text-ink focus:border-primario focus:outline-none"
+              />
+            </div>
+            <p className="mt-1 text-xs text-ink/50">
+              Solo minúsculas, números y guiones. Sin espacios.
+            </p>
+          </div>
+
           <div>
             <label htmlFor="whatsapp_admin" className="block text-sm font-medium text-ink">
               Tu número de WhatsApp

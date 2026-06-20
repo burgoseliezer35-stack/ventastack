@@ -10,6 +10,7 @@ export async function guardarConfiguracion(companyId: string, formData: FormData
   const whatsapp = (formData.get("whatsapp_admin") as string)?.trim() || null;
   const umbralRaw = (formData.get("umbral_stock_bajo") as string)?.trim();
   const umbral = umbralRaw ? Number(umbralRaw) : null;
+  const slugRaw = (formData.get("slug") as string)?.trim().toLowerCase().replace(/[^a-z0-9-]/g, "") || null;
 
   if (umbral !== null && (!Number.isFinite(umbral) || umbral < 0)) {
     redirect(
@@ -19,7 +20,7 @@ export async function guardarConfiguracion(companyId: string, formData: FormData
 
   const { error } = await supabase
     .from("companies")
-    .update({ whatsapp_admin: whatsapp, umbral_stock_bajo: umbral })
+    .update({ whatsapp_admin: whatsapp, umbral_stock_bajo: umbral, slug: slugRaw })
     .eq("id", companyId);
 
   if (error) {

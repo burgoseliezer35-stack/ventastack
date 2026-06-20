@@ -31,6 +31,7 @@ type Props = {
   rol: string;
   esAdmin: boolean;
   esVendedor: boolean;
+  nombreEmpresa?: string;
 };
 
 type SubEnlace = { href: string; etiqueta: string };
@@ -38,7 +39,7 @@ type ItemNav =
   | { tipo: "enlace"; href: string; etiqueta: string; Icono: LucideIcon }
   | { tipo: "grupo"; etiqueta: string; Icono: LucideIcon; items: SubEnlace[] };
 
-export function Sidebar({ nombre, rol, esAdmin, esVendedor }: Props) {
+export function Sidebar({ nombre, rol, esAdmin, esVendedor, nombreEmpresa }: Props) {
   const [abierto, setAbierto] = useState(false);
   const pathname = usePathname();
 
@@ -132,10 +133,15 @@ export function Sidebar({ nombre, rol, esAdmin, esVendedor }: Props) {
 
   return (
     <>
-      <div className="sticky top-0 z-20 flex items-center justify-between border-b border-linea bg-white px-4 py-3 md:hidden">
-        <span className="font-bold text-ink">Ventastack</span>
-        <button onClick={() => setAbierto(true)} className="text-ink" aria-label="Abrir menú">
-          <Menu size={22} />
+      <div className="sticky top-0 z-20 flex items-center justify-between border-b border-linea bg-white px-3 py-2 md:hidden">
+        <div className="flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primario text-xs font-bold text-white">
+            {nombreEmpresa?.charAt(0)?.toUpperCase() ?? "V"}
+          </div>
+          <span className="text-sm font-semibold text-ink">{nombreEmpresa ?? "Ventastack"}</span>
+        </div>
+        <button onClick={() => setAbierto(true)} className="rounded-md p-1.5 text-ink hover:bg-paper" aria-label="Abrir menú">
+          <Menu size={20} />
         </button>
       </div>
 

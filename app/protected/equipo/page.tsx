@@ -25,6 +25,12 @@ export default async function EquipoPage() {
     .in("role", ["vendedor", "cajero"])
     .order("created_at", { ascending: true });
 
+  const { data: empresa } = await supabase
+    .from("companies")
+    .select("slug")
+    .eq("id", miPerfil.company_id)
+    .single();
+
   return (
     <div className="flex flex-col gap-4">
       <div>
@@ -38,6 +44,7 @@ export default async function EquipoPage() {
       <GestionEquipo
         equipo={equipo ?? []}
         companyId={miPerfil.company_id}
+        slug={empresa?.slug ?? null}
       />
     </div>
   );

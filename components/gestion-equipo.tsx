@@ -13,9 +13,11 @@ type Miembro = {
 export function GestionEquipo({
   equipo,
   companyId,
+  slug,
 }: {
   equipo: Miembro[];
   companyId: string;
+  slug: string | null;
 }) {
   const lista = equipo;
   const [fullName, setFullName] = useState("");
@@ -144,8 +146,15 @@ export function GestionEquipo({
             Tu equipo — {lista.length} persona{lista.length === 1 ? "" : "s"}
           </h2>
           <p className="text-xs text-ink/50 mt-0.5">
-            Enlace de acceso para vendedores/cajeros:{" "}
-            <span className="font-mono">/auth/vendedor?empresa={companyId}</span>
+            Enlace de acceso:{" "}
+            <span className="font-mono">
+              /auth/vendedor?empresa={slug ?? companyId}
+            </span>
+            {!slug && (
+              <span className="ml-2 text-primario">
+                (configura un nombre corto en Configuración)
+              </span>
+            )}
           </p>
         </div>
 
