@@ -70,7 +70,7 @@ export default async function ProtectedLayout({
   const esVendedor = perfil.role === "vendedor";
 
   return (
-    <div className="flex min-h-screen bg-paper md:flex-row">
+    <div className="flex min-h-screen flex-col bg-paper md:flex-row print:hidden">
       <Sidebar
         nombre={perfil.full_name ?? "Usuario"}
         rol={perfil.role ?? "—"}
