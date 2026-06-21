@@ -40,7 +40,7 @@ export default async function ConfiguracionPage({
 
   const { data: empresa } = await supabase
     .from("companies")
-    .select("id, whatsapp_admin, umbral_stock_bajo, slug")
+    .select("id, whatsapp_admin, umbral_stock_bajo, slug, tipo_negocio, iva_porcentaje, iva_incluido")
     .eq("id", miPerfil.company_id)
     .single();
 
@@ -90,6 +90,55 @@ export default async function ConfiguracionPage({
             <p className="mt-1 text-xs text-ink/50">
               Solo minúsculas, números y guiones. Sin espacios.
             </p>
+          </div>
+
+          <div className="border-t border-linea pt-4">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink/50">Tipo de negocio</p>
+            <select
+              name="tipo_negocio"
+              defaultValue={empresa.tipo_negocio ?? "tienda"}
+              className="w-full rounded-md border border-linea px-3 py-2 text-ink focus:border-primario focus:outline-none"
+            >
+              <option value="tienda">🏪 Tienda / Miscelánea / Abarrotes</option>
+              <option value="distribuidor">🚚 Distribuidor / Ruta de ventas</option>
+              <option value="restaurante">🍽️ Restaurante / Cafetería</option>
+              <option value="taller">🔧 Taller / Servicio técnico</option>
+            </select>
+          </div>
+
+          <div className="border-t border-linea pt-4">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink/50">IVA</p>
+            <div className="flex flex-col gap-3">
+              <div>
+                <label className="block text-sm font-medium text-ink">Porcentaje de IVA</label>
+                <div className="mt-1 flex items-center gap-2">
+                  <input
+                    name="iva_porcentaje"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    defaultValue={empresa.iva_porcentaje ?? 0}
+                    className="w-24 rounded-md border border-linea px-3 py-2 text-ink focus:border-primario focus:outline-none"
+                  />
+                  <span className="text-sm text-ink/60">% (0 = sin IVA, 16 = IVA estándar México)</span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-ink mb-1">¿Cómo manejas los precios?</label>
+                <select
+                  name="iva_incluido"
+                  defaultValue={empresa.iva_incluido ? "true" : "false"}
+                  className="w-full rounded-md border border-linea px-3 py-2 text-ink focus:border-primario focus:outline-none"
+                >
+                  <option value="true">El precio ya incluye IVA (precio final al cliente)</option>
+                  <option value="false">El precio no incluye IVA (se agrega al cobrar)</option>
+                </select>
+                <p className="mt-1 text-xs text-ink/50">
+                  La mayoría de tiendas de abarrotes usan &quot;precio final&quot;. Negocios que facturan usan &quot;precio + IVA&quot;.
+                </p>
+              </div>
+            </div>
           </div>
 
           <div>

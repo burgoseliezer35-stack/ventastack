@@ -35,10 +35,14 @@ export function PosForm({
   productos,
   clientes,
   geminiDisponible,
+  ivaPorcentaje = 0,
+  ivaIncluido = true,
 }: {
   productos: Producto[];
   clientes: Cliente[];
   geminiDisponible: boolean;
+  ivaPorcentaje?: number;
+  ivaIncluido?: boolean;
 }) {
   const [carrito, setCarritoRaw] = useState<ItemCarrito[]>(() => {
     // Al montar, intentamos recuperar el carrito de esta sesión —
@@ -316,13 +320,51 @@ export function PosForm({
   };
 
   const quitarDelCarrito = (productoId: string) => {
+    const item = carrito.find((i) => i.producto_id === productoId);
+    if (item) {
+      // Registrar en auditoría (fire and forget)
+      void (async () => {
+        try {
+          await createClient().rpc("registrar_auditoria", {
+            p_accion: "borrar_item_carrito",
+            p_detalle: {
+              producto_id: productoId,
+              nombre: item.nombre,
+              cantidad: item.cantidad,
+              precio_unitario: item.precio_unitario,
+              subtotal: item.precio_unitario * item.cantidad,
+            },
+          });
+        } catch { /* silencioso */ }
+      })();
+    }
     setCarrito((prev) => prev.filter((i) => i.producto_id !== productoId));
   };
 
-  const total = carrito.reduce(
+  const subtotal = carrito.reduce(
     (suma, i) => suma + i.precio_unitario * i.cantidad,
     0,
   );
+
+  // Cálculo de IVA según configuración de la empresa
+  const tieneIva = ivaPorcentaje > 0;
+  let baseGravable = 0;
+  let montoIva = 0;
+  let total = subtotal;
+
+  if (tieneIva) {
+    if (ivaIncluido) {
+      // El precio ya incluye IVA — desglosamos para el recibo
+      baseGravable = subtotal / (1 + ivaPorcentaje / 100);
+      montoIva = subtotal - baseGravable;
+      total = subtotal; // el total no cambia
+    } else {
+      // El precio no incluye IVA — se agrega al cobrar
+      baseGravable = subtotal;
+      montoIva = subtotal * (ivaPorcentaje / 100);
+      total = subtotal + montoIva;
+    }
+  }
 
   // Solo tiene sentido cuando el cajero de verdad escribió un
   // monto — si lo deja vacío, no mostramos ni bloqueamos nada (a
@@ -609,6 +651,18 @@ export function PosForm({
           <div>
             <p className="text-xs uppercase tracking-wide text-white/70">Total a cobrar</p>
             <p className="cifra text-3xl font-bold">${total.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</p>
+            {tieneIva && (
+              <div className="mt-1 text-xs text-white/70 space-y-0.5">
+                <div className="flex justify-between">
+                  <span>Subtotal{ivaIncluido ? " (IVA incl.)" : ""}:</span>
+                  <span className="cifra">${baseGravable.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>IVA {ivaPorcentaje}%:</span>
+                  <span className="cifra">${montoIva.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+                </div>
+              </div>
+            )}
           </div>
 
           <div>

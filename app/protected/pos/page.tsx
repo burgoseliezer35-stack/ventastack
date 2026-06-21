@@ -12,6 +12,19 @@ export default async function PosPage() {
     redirect("/auth/login");
   }
 
+  const userId = data.claims.sub as string;
+  const { data: miPerfil } = await supabase
+    .from("profiles")
+    .select("company_id")
+    .eq("id", userId)
+    .single();
+
+  const { data: empresa } = await supabase
+    .from("companies")
+    .select("iva_porcentaje, iva_incluido")
+    .eq("id", miPerfil?.company_id)
+    .single();
+
   const { data: productosRaw } = await supabase
     .from("productos")
     .select("id, nombre, precio, stock, codigo_barras, imagen_url")
@@ -23,10 +36,6 @@ export default async function PosPage() {
     .select("producto_id, cantidad_minima, precio_unitario")
     .order("cantidad_minima", { ascending: false });
 
-  // Le pegamos sus niveles de mayoreo a cada producto, ya
-  // ordenados de mayor a menor cantidad — así el formulario solo
-  // tiene que tomar el primero que SÍ alcance, sin tener que
-  // ordenar nada por su cuenta.
   const productos = (productosRaw ?? []).map((p) => ({
     ...p,
     niveles: (niveles ?? []).filter((n) => n.producto_id === p.id),
@@ -46,6 +55,8 @@ export default async function PosPage() {
           productos={productos}
           clientes={clientes ?? []}
           geminiDisponible={geminiDisponible()}
+          ivaPorcentaje={empresa?.iva_porcentaje ?? 0}
+          ivaIncluido={empresa?.iva_incluido ?? true}
         />
       ) : (
         <p className="max-w-sm text-sm text-ink/60">

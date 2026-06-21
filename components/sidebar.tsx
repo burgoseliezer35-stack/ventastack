@@ -23,6 +23,8 @@ import {
   X,
   LogOut,
   ChevronDown,
+  ShieldCheck,
+  Clock,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -32,6 +34,7 @@ type Props = {
   esAdmin: boolean;
   esVendedor: boolean;
   nombreEmpresa?: string;
+  tipoNegocio?: string;
 };
 
 type SubEnlace = { href: string; etiqueta: string };
@@ -39,7 +42,7 @@ type ItemNav =
   | { tipo: "enlace"; href: string; etiqueta: string; Icono: LucideIcon }
   | { tipo: "grupo"; etiqueta: string; Icono: LucideIcon; items: SubEnlace[] };
 
-export function Sidebar({ nombre, rol, esAdmin, esVendedor, nombreEmpresa }: Props) {
+export function Sidebar({ nombre, rol, esAdmin, esVendedor, nombreEmpresa, tipoNegocio = "tienda" }: Props) {
   const [abierto, setAbierto] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
@@ -94,12 +97,17 @@ export function Sidebar({ nombre, rol, esAdmin, esVendedor, nombreEmpresa }: Pro
       etiqueta: "Reportes",
       Icono: BarChart3,
     });
-    enlaces.push({
-      tipo: "enlace",
-      href: "/protected/rutas",
-      etiqueta: "Ver rutas",
-      Icono: MapPin,
-    });
+
+    // Mapa de rutas solo para distribuidores
+    if (tipoNegocio === "distribuidor") {
+      enlaces.push({
+        tipo: "enlace",
+        href: "/protected/rutas",
+        etiqueta: "Ver rutas",
+        Icono: MapPin,
+      });
+    }
+
     enlaces.push({
       tipo: "grupo",
       etiqueta: "Productos",
@@ -109,6 +117,7 @@ export function Sidebar({ nombre, rol, esAdmin, esVendedor, nombreEmpresa }: Pro
         { href: "/protected/productos/categorias", etiqueta: "Categorías" },
       ],
     });
+
     enlaces.push({
       tipo: "grupo",
       etiqueta: "Compras",
@@ -120,6 +129,7 @@ export function Sidebar({ nombre, rol, esAdmin, esVendedor, nombreEmpresa }: Pro
       ],
     });
   }
+
   if (esAdmin || esVendedor) {
     enlaces.push({
       tipo: "enlace",
@@ -128,9 +138,16 @@ export function Sidebar({ nombre, rol, esAdmin, esVendedor, nombreEmpresa }: Pro
       Icono: Users,
     });
   }
+
   if (esAdmin) {
     enlaces.push({ tipo: "enlace", href: "/protected/equipo", etiqueta: "Equipo", Icono: UserPlus });
+    enlaces.push({ tipo: "enlace", href: "/protected/auditoria", etiqueta: "Auditoría", Icono: ShieldCheck });
     enlaces.push({ tipo: "enlace", href: "/protected/configuracion", etiqueta: "Configuración", Icono: Settings });
+  }
+
+  // Turno disponible para cajeros también
+  if (!esAdmin) {
+    enlaces.push({ tipo: "enlace", href: "/protected/caja/turno", etiqueta: "Mi turno", Icono: Clock });
   }
 
   const tabsMobile = [

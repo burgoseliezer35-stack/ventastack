@@ -46,7 +46,7 @@ export default async function ProtectedLayout({
 
   const { data: empresa } = await supabase
     .from("companies")
-    .select("activa, name")
+    .select("activa, name, tipo_negocio")
     .eq("id", perfil.company_id)
     .single();
 
@@ -77,6 +77,7 @@ export default async function ProtectedLayout({
         esAdmin={esAdmin}
         esVendedor={esVendedor}
         nombreEmpresa={empresa?.name ?? undefined}
+        tipoNegocio={empresa?.tipo_negocio ?? "tienda"}
       />
       <main className="flex-1 px-4 py-6 md:px-8 md:py-8">{children}</main>
       {esVendedor && <CompartirUbicacion />}
