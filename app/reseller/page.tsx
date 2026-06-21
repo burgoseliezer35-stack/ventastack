@@ -6,7 +6,7 @@ export default async function ResellerPage() {
 
   const { data: empresas } = await supabase
     .from("companies")
-    .select("id, name, created_at, precio_mensual, activa")
+    .select("id, name, created_at, precio_mensual, activa, tipo_negocio")
     .order("created_at", { ascending: false });
 
   const { data: pagos } = await supabase
@@ -64,8 +64,12 @@ export default async function ResellerPage() {
           >
             <div>
               <p className="font-medium text-ink">{e.name}</p>
-              <p className="cifra text-xs text-ink/50">
-                ${e.precio_mensual.toFixed(2)} / mes
+              <p className="text-xs text-ink/50">
+                {e.tipo_negocio === "distribuidor" ? "🚚 Distribuidor" :
+                 e.tipo_negocio === "restaurante" ? "🍽️ Restaurante" :
+                 e.tipo_negocio === "taller" ? "🔧 Taller" : "🏪 Tienda"}
+                {" · "}
+                <span className="cifra">${e.precio_mensual.toLocaleString("en-US",{minimumFractionDigits:2})}/mes</span>
               </p>
             </div>
             <span className={`insignia ${e.activa ? "text-verde" : "text-primario"}`}>

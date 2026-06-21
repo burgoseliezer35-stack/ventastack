@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { actualizarPrecio, cambiarEstado, registrarPago } from "./actions";
+import { actualizarPrecio, cambiarEstado, registrarPago, borrarEmpresa, actualizarTipoNegocio } from "./actions";
 
 export default async function EmpresaDetallePage({
   params,
@@ -13,7 +13,7 @@ export default async function EmpresaDetallePage({
 
   const { data: empresa } = await supabase
     .from("companies")
-    .select("id, name, created_at, precio_mensual, activa")
+    .select("id, name, created_at, precio_mensual, activa, tipo_negocio")
     .eq("id", id)
     .single();
 
@@ -126,6 +126,53 @@ export default async function EmpresaDetallePage({
         ) : (
           <p className="text-sm text-ink/50">Todavía no hay pagos registrados.</p>
         )}
+      </div>
+
+      {/* Tipo de negocio */}
+      <form
+        action={actualizarTipoNegocio.bind(null, empresa.id)}
+        className="flex flex-col gap-3 rounded-lg border border-linea bg-white p-4"
+      >
+        <label className="text-sm font-medium text-ink">Giro / tipo de negocio</label>
+        <select
+          name="tipo_negocio"
+          defaultValue={empresa.tipo_negocio ?? "tienda"}
+          className="w-full rounded-md border border-linea px-3 py-2 text-sm text-ink focus:border-primario focus:outline-none"
+        >
+          <option value="tienda">🏪 Tienda / Miscelánea / Abarrotes</option>
+          <option value="distribuidor">🚚 Distribuidor / Ruta de ventas</option>
+          <option value="restaurante">🍽️ Restaurante / Cafetería</option>
+          <option value="taller">🔧 Taller / Servicio técnico</option>
+        </select>
+        <button
+          type="submit"
+          className="rounded-md bg-primario px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
+        >
+          Guardar tipo
+        </button>
+      </form>
+
+      {/* Zona de peligro — borrar empresa */}
+      <div className="rounded-lg border border-red-200 bg-red-50 p-4 flex flex-col gap-3">
+        <div>
+          <p className="text-sm font-semibold text-red-800">Zona de peligro</p>
+          <p className="text-xs text-red-600 mt-0.5">
+            Si el negocio tiene historial de ventas, solo se desactivará. Si es una cuenta de prueba sin ventas, se borrará permanentemente.
+          </p>
+        </div>
+        <form action={borrarEmpresa.bind(null, empresa.id)}>
+          <button
+            type="submit"
+            className="rounded-md border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100"
+            onClick={(e) => {
+              if (!confirm(`¿Seguro que quieres eliminar "${empresa.name}"? Esta acción puede no ser reversible.`)) {
+                e.preventDefault();
+              }
+            }}
+          >
+            Borrar empresa
+          </button>
+        </form>
       </div>
 
       <Link href="/reseller" className="text-sm text-primario hover:underline">

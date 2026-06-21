@@ -57,3 +57,31 @@ export async function registrarPago(companyId: string, formData: FormData) {
   revalidatePath(`/reseller/empresas/${companyId}`);
   revalidatePath("/reseller");
 }
+
+export async function borrarEmpresa(companyId: string) {
+  const supabase = await createClient();
+
+  // Solo borramos si no tiene pedidos — para no perder historial
+  // de un negocio que ya operó de verdad.
+  const { count } = await supabase
+    .from("pedidos")
+    .select("id", { count: "exact", head: true })
+    .eq("company_id", companyId);
+
+  if (count && count > 0) {
+    // Tiene historial — solo desactivamos, no borramos
+    await supabase.from("companies").update({ activa: false }).eq("id", companyId);
+  } else {
+    // Sin historial (cuenta de prueba) — borramos directo
+    await supabase.from("companies").delete().eq("id", companyId);
+  }
+
+  revalidatePath("/reseller");
+}
+
+export async function actualizarTipoNegocio(companyId: string, formData: FormData) {
+  const supabase = await createClient();
+  const tipoNegocio = formData.get("tipo_negocio") as string;
+  await supabase.from("companies").update({ tipo_negocio: tipoNegocio }).eq("id", companyId);
+  revalidatePath(`/reseller/empresas/${companyId}`);
+}
