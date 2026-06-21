@@ -1,42 +1,52 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-export async function guardarConfiguracion(companyId: string, formData: FormData) {
+export async function guardarConfiguracion(
+  companyId: string,
+  formData: FormData,
+) {
   const supabase = await createClient();
 
-  const whatsapp = (formData.get("whatsapp_admin") as string)?.trim() || null;
-  const umbralRaw = (formData.get("umbral_stock_bajo") as string)?.trim();
-  const umbral = umbralRaw ? Number(umbralRaw) : null;
-  const slugRaw = (formData.get("slug") as string)?.trim().toLowerCase().replace(/[^a-z0-9-]/g, "") || null;
-  const tipoNegocio = (formData.get("tipo_negocio") as string) || "tienda";
-  const ivaPorcentaje = Number(formData.get("iva_porcentaje") || 0);
-  const ivaIncluido = formData.get("iva_incluido") === "true";
+  const str = (k: string) => (formData.get(k) as string)?.trim() || null;
+  const num = (k: string) => {
+    const v = Number(formData.get(k));
+    return Number.isFinite(v) ? v : 0;
+  };
+  const bool = (k: string) => formData.get(k) === "true" || formData.get(k) === "on" || formData.get(k) === "true";
 
-  if (umbral !== null && (!Number.isFinite(umbral) || umbral < 0)) {
-    redirect(
-      `/protected/configuracion?error=${encodeURIComponent("El umbral debe ser un número válido")}`,
-    );
-  }
+  const umbralRaw = formData.get("umbral_stock_bajo") as string;
+  const umbral = umbralRaw?.trim() ? Number(umbralRaw) : null;
 
   const { error } = await supabase
     .from("companies")
     .update({
-      whatsapp_admin: whatsapp,
+      name: str("name"),
+      logo_url: str("logo_url"),
+      razon_social: str("razon_social"),
+      rfc: str("rfc"),
+      calle: str("calle"),
+      colonia: str("colonia"),
+      ciudad: str("ciudad"),
+      estado_empresa: str("estado_empresa"),
+      codigo_postal: str("codigo_postal"),
+      telefono: str("telefono"),
+      whatsapp_admin: str("whatsapp_admin"),
       umbral_stock_bajo: umbral,
-      slug: slugRaw,
-      tipo_negocio: tipoNegocio,
-      iva_porcentaje: ivaPorcentaje,
-      iva_incluido: ivaIncluido,
+      slug: str("slug")?.toLowerCase().replace(/[^a-z0-9-]/g, "") ?? null,
+      iva_porcentaje: num("iva_porcentaje"),
+      iva_incluido: bool("iva_incluido"),
+      ieps_habilitado: formData.get("ieps_habilitado") === "true",
+      ieps_porcentaje: num("ieps_porcentaje"),
     })
     .eq("id", companyId);
 
   if (error) {
-    redirect(`/protected/configuracion?error=${encodeURIComponent(error.message)}`);
+    redirect(
+      `/protected/configuracion?error=${encodeURIComponent(error.message)}`,
+    );
   }
 
-  revalidatePath("/protected/configuracion");
   redirect("/protected/configuracion?guardado=1");
 }

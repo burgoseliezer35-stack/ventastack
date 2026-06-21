@@ -11,38 +11,45 @@ export default async function ReciboPage({
   const supabase = await createClient();
 
   const { data, error } = await supabase.auth.getClaims();
-  if (error || !data?.claims) {
-    redirect("/auth/login");
-  }
+  if (error || !data?.claims) redirect("/auth/login");
 
+  const userId = data.claims.sub as string;
+
+  // Traemos los datos del pedido incluyendo quién lo creó
   const { data: pedido } = await supabase
     .from("pedidos")
-    .select("id, total, metodo_pago, created_at, clientes(nombre), companies(name)")
+    .select("id, total, metodo_pago, created_at, created_by, clientes(nombre), companies(name, logo_url, rfc, razon_social, calle, colonia, ciudad, estado_empresa, codigo_postal, telefono, iva_porcentaje, iva_incluido, ieps_habilitado, ieps_porcentaje)")
     .eq("id", id)
     .single();
 
-  if (!pedido) {
-    notFound();
-  }
+  if (!pedido) notFound();
 
   const { data: detalle } = await supabase
     .from("detalle_pedidos")
     .select("cantidad, precio_unitario, subtotal, productos(nombre)")
     .eq("pedido_id", id);
 
-  // Estas relaciones a veces llegan como objeto y a veces como
-  // arreglo de un elemento, según la versión de los tipos — las
-  // normalizamos por seguridad antes de pasarlas al componente.
-  const normalizar = <T,>(valor: T | T[] | null | undefined): T | null =>
-    Array.isArray(valor) ? valor[0] ?? null : valor ?? null;
+  // Nombre de quien atendió
+  const { data: vendedorPerfil } = await supabase
+    .from("profiles")
+    .select("full_name")
+    .eq("id", pedido.created_by ?? userId)
+    .single();
 
-  const cliente = normalizar(pedido.clientes as { nombre: string } | { nombre: string }[] | null);
-  const empresa = normalizar(pedido.companies as { name: string } | { name: string }[] | null);
+  const normalizar = <T,>(v: T | T[] | null | undefined): T | null =>
+    Array.isArray(v) ? v[0] ?? null : v ?? null;
+
+  const cliente = normalizar(pedido.clientes as unknown as { nombre: string } | null);
+  const empresa = normalizar(pedido.companies as unknown as {
+    name: string; logo_url: string | null; rfc: string | null;
+    razon_social: string | null; calle: string | null; colonia: string | null;
+    ciudad: string | null; estado_empresa: string | null; codigo_postal: string | null;
+    telefono: string | null; iva_porcentaje: number | null; iva_incluido: boolean | null;
+    ieps_habilitado: boolean | null; ieps_porcentaje: number | null;
+  } | null);
 
   const renglones = (detalle ?? []).map((d) => ({
-    nombre:
-      normalizar(d.productos as { nombre: string } | { nombre: string }[] | null)
-        ?.nombre ?? "Producto",
+    nombre: normalizar(d.productos as unknown as { nombre: string } | null)?.nombre ?? "Producto",
     cantidad: d.cantidad,
     precioUnitario: d.precio_unitario,
     subtotal: d.subtotal,
@@ -52,11 +59,22 @@ export default async function ReciboPage({
     <Recibo
       pedidoId={pedido.id}
       empresa={empresa?.name ?? "Mi Negocio"}
+      logoUrl={empresa?.logo_url ?? null}
+      razonSocial={empresa?.razon_social ?? null}
+      rfc={empresa?.rfc ?? null}
+      direccion={[empresa?.calle, empresa?.colonia, empresa?.ciudad, empresa?.estado_empresa, empresa?.codigo_postal]
+        .filter(Boolean).join(", ")}
+      telefono={empresa?.telefono ?? null}
       cliente={cliente?.nombre ?? "Público general"}
       metodoPago={pedido.metodo_pago}
       total={pedido.total}
       fecha={pedido.created_at}
       renglones={renglones}
+      atendidoPor={vendedorPerfil?.full_name ?? null}
+      ivaPorcentaje={empresa?.iva_porcentaje ?? 0}
+      ivaIncluido={empresa?.iva_incluido ?? true}
+      iepsHabilitado={empresa?.ieps_habilitado ?? false}
+      iepsPorcentaje={empresa?.ieps_porcentaje ?? 0}
     />
   );
 }

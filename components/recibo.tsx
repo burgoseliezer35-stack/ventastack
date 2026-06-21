@@ -11,167 +11,138 @@ type Renglon = {
   subtotal: number;
 };
 
-// Anchos estándar de papel térmico en mm
 const ANCHOS = [58, 72, 80] as const;
 type Ancho = (typeof ANCHOS)[number];
 
-export function Recibo({
-  pedidoId,
-  empresa,
-  cliente,
-  metodoPago,
-  total,
-  fecha,
-  renglones,
-  anchoMm = 72,
-}: {
+type ReciboProps = {
   pedidoId: string;
   empresa: string;
+  logoUrl: string | null;
+  razonSocial: string | null;
+  rfc: string | null;
+  direccion: string;
+  telefono: string | null;
   cliente: string;
   metodoPago: string;
   total: number;
   fecha: string;
   renglones: Renglon[];
+  atendidoPor: string | null;
+  ivaPorcentaje: number;
+  ivaIncluido: boolean;
+  iepsHabilitado: boolean;
+  iepsPorcentaje: number;
   anchoMm?: number;
-}) {
+};
+
+export function Recibo({
+  pedidoId, empresa, logoUrl, razonSocial, rfc, direccion, telefono,
+  cliente, metodoPago, total, fecha, renglones, atendidoPor,
+  ivaPorcentaje, ivaIncluido, iepsHabilitado, iepsPorcentaje,
+  anchoMm = 72,
+}: ReciboProps) {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [ancho, setAncho] = useState<Ancho>(
     (ANCHOS.includes(anchoMm as Ancho) ? anchoMm : 72) as Ancho
   );
   const folio = pedidoId.slice(0, 8).toUpperCase();
-
-  // px aproximados para cada ancho de papel
   const anchoPx = ancho === 58 ? 210 : ancho === 72 ? 260 : 302;
 
+  // Cálculo de impuestos
+  const subtotalBase = renglones.reduce((s, r) => s + r.subtotal, 0);
+  const tieneIva = ivaPorcentaje > 0;
+  let baseGravable = subtotalBase;
+  let montoIva = 0;
+  let montoIeps = 0;
+  let totalFinal = total;
+
+  if (tieneIva) {
+    if (ivaIncluido) {
+      baseGravable = subtotalBase / (1 + ivaPorcentaje / 100);
+      montoIva = subtotalBase - baseGravable;
+    } else {
+      baseGravable = subtotalBase;
+      montoIva = subtotalBase * (ivaPorcentaje / 100);
+    }
+  }
+  if (iepsHabilitado && iepsPorcentaje > 0) {
+    montoIeps = baseGravable * (iepsPorcentaje / 100);
+    totalFinal = ivaIncluido ? total + montoIeps : baseGravable + montoIva + montoIeps;
+  }
+
   useEffect(() => {
-    const texto = `Ventastack\nFolio: ${folio}\nTotal: $${total.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
-    QRCode.toDataURL(texto, { width: 120, margin: 1 })
+    QRCode.toDataURL(`Ventastack\nFolio: ${folio}\nTotal: $${totalFinal.toFixed(2)}`, { width: 120, margin: 1 })
       .then(setQrDataUrl)
       .catch(() => setQrDataUrl(null));
-  }, [folio, total]);
+  }, [folio, totalFinal]);
 
-  return (
+  const ticketJsx = (
     <>
-      {/* CSS de impresión — define el tamaño de página exacto del
-          rollo térmico y elimina los headers/footers del navegador */}
-      <style>{`
-        @media print {
-          @page {
-            size: ${ancho}mm auto;
-            margin: 2mm;
-          }
-          body > * { display: none !important; }
-          #ticket-print { display: block !important; }
-          #ticket-print * { -webkit-print-color-adjust: exact; }
-        }
-        #ticket-print { display: none; }
-        @media print { #ticket-print { display: block; } }
-      `}</style>
-
-      <div className="flex min-h-screen flex-col items-center gap-4 bg-paper px-4 py-8 print:hidden">
-        {/* Selector de ancho — solo visible en pantalla, no imprime */}
-        <div className="flex items-center gap-3 rounded-lg border border-linea bg-white px-4 py-2 shadow-sm">
-          <span className="text-xs text-ink/60">Ancho de papel:</span>
-          {ANCHOS.map((a) => (
-            <button
-              key={a}
-              type="button"
-              onClick={() => setAncho(a)}
-              className={`rounded px-3 py-1 text-xs font-medium transition ${
-                ancho === a
-                  ? "bg-primario text-white"
-                  : "border border-linea text-ink hover:bg-paper"
-              }`}
-            >
-              {a}mm
-            </button>
-          ))}
+      {/* Logo */}
+      {logoUrl && (
+        <div style={{ textAlign: "center", marginBottom: 4 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={logoUrl} alt="logo" style={{ maxHeight: 48, maxWidth: "80%", margin: "0 auto" }} />
         </div>
+      )}
 
-        {/* Vista previa del ticket */}
-        <div
-          style={{ width: anchoPx, fontFamily: "monospace", fontSize: 11 }}
-          className="rounded-lg border border-linea bg-white p-3 shadow-sm"
-        >
-          <TicketContent
-            empresa={empresa}
-            folio={folio}
-            fecha={fecha}
-            cliente={cliente}
-            metodoPago={metodoPago}
-            renglones={renglones}
-            total={total}
-            qrDataUrl={qrDataUrl}
-          />
-        </div>
-
-        <div className="flex w-full flex-col gap-2" style={{ maxWidth: anchoPx }}>
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="w-full rounded-md bg-primario px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
-          >
-            Imprimir / Guardar PDF
-          </button>
-          <Link
-            href="/protected/pos"
-            className="text-center text-sm text-primario hover:underline"
-          >
-            Nueva venta →
-          </Link>
-        </div>
-      </div>
-
-      {/* Versión solo para impresión — sin el selector ni botones */}
-      <div id="ticket-print" style={{ fontFamily: "monospace", fontSize: 11, padding: "2mm" }}>
-        <TicketContent
-          empresa={empresa}
-          folio={folio}
-          fecha={fecha}
-          cliente={cliente}
-          metodoPago={metodoPago}
-          renglones={renglones}
-          total={total}
-          qrDataUrl={qrDataUrl}
-        />
-      </div>
-    </>
-  );
-}
-
-function TicketContent({
-  empresa, folio, fecha, cliente, metodoPago, renglones, total, qrDataUrl,
-}: {
-  empresa: string; folio: string; fecha: string; cliente: string;
-  metodoPago: string; renglones: Renglon[]; total: number; qrDataUrl: string | null;
-}) {
-  return (
-    <>
+      {/* Encabezado de la empresa */}
       <div style={{ textAlign: "center", marginBottom: 6 }}>
         <div style={{ fontWeight: "bold", fontSize: 13 }}>{empresa}</div>
-        <div>Folio: {folio}</div>
-        <div>{new Date(fecha).toLocaleString("es-MX")}</div>
+        {razonSocial && <div style={{ fontSize: 9 }}>{razonSocial}</div>}
+        {rfc && <div style={{ fontSize: 9 }}>RFC: {rfc}</div>}
+        {direccion && <div style={{ fontSize: 9 }}>{direccion}</div>}
+        {telefono && <div style={{ fontSize: 9 }}>Tel: {telefono}</div>}
       </div>
 
-      <div style={{ borderTop: "1px dashed #999", padding: "4px 0" }}>
+      {/* Folio y fecha */}
+      <div style={{ borderTop: "1px dashed #999", padding: "4px 0", textAlign: "center" }}>
+        <div style={{ fontSize: 10 }}>Folio: <strong>{folio}</strong></div>
+        <div style={{ fontSize: 9 }}>{new Date(fecha).toLocaleString("es-MX")}</div>
+      </div>
+
+      {/* Cliente y pago */}
+      <div style={{ borderTop: "1px dashed #999", padding: "4px 0", fontSize: 10 }}>
         <div>Cliente: {cliente}</div>
         <div>Pago: {metodoPago}</div>
+        {atendidoPor && <div>Atendió: {atendidoPor}</div>}
       </div>
 
+      {/* Productos */}
       <div style={{ borderTop: "1px dashed #999", padding: "4px 0" }}>
         {renglones.map((r, i) => (
-          <div key={i} style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
+          <div key={i} style={{ display: "flex", justifyContent: "space-between", marginBottom: 2, fontSize: 11 }}>
             <span>{r.cantidad} x {r.nombre}</span>
-            <span>${r.subtotal.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+            <span>${r.subtotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
           </div>
         ))}
       </div>
 
-      <div style={{ borderTop: "1px dashed #999", display: "flex", justifyContent: "space-between", padding: "4px 0", fontWeight: "bold", fontSize: 13 }}>
-        <span>TOTAL</span>
-        <span>${total.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+      {/* Desglose de impuestos */}
+      <div style={{ borderTop: "1px dashed #999", padding: "4px 0", fontSize: 10 }}>
+        <div style={{ display: "flex", justifyContent: "space-between" }}>
+          <span>Subtotal</span>
+          <span>${baseGravable.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+        </div>
+        {tieneIva && (
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span>IVA {ivaPorcentaje}%</span>
+            <span>${montoIva.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+          </div>
+        )}
+        {iepsHabilitado && montoIeps > 0 && (
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span>IEPS {iepsPorcentaje}%</span>
+            <span>${montoIeps.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+          </div>
+        )}
+        <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold", fontSize: 13, marginTop: 2 }}>
+          <span>TOTAL</span>
+          <span>${totalFinal.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+        </div>
       </div>
 
+      {/* QR */}
       {qrDataUrl && (
         <div style={{ textAlign: "center", borderTop: "1px dashed #999", paddingTop: 6 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -179,6 +150,55 @@ function TicketContent({
           <div style={{ fontSize: 9, color: "#666", marginTop: 2 }}>Gracias por tu compra</div>
         </div>
       )}
+    </>
+  );
+
+  return (
+    <>
+      <style>{`
+        @media print {
+          @page { size: ${ancho}mm auto; margin: 2mm; }
+          body > * { display: none !important; }
+          #ticket-print { display: block !important; }
+        }
+        #ticket-print { display: none; }
+        @media print { #ticket-print { display: block; } }
+      `}</style>
+
+      {/* Vista en pantalla */}
+      <div className="flex min-h-screen flex-col items-center gap-4 bg-paper px-4 py-8 print:hidden">
+        <div className="flex items-center gap-3 rounded-lg border border-linea bg-white px-4 py-2 shadow-sm">
+          <span className="text-xs text-ink/60">Ancho de papel:</span>
+          {ANCHOS.map((a) => (
+            <button key={a} type="button" onClick={() => setAncho(a)}
+              className={`rounded px-3 py-1 text-xs font-medium transition ${
+                ancho === a ? "bg-primario text-white" : "border border-linea text-ink hover:bg-paper"
+              }`}>
+              {a}mm
+            </button>
+          ))}
+        </div>
+
+        <div style={{ width: anchoPx, fontFamily: "monospace", fontSize: 11 }}
+          className="rounded-lg border border-linea bg-white p-3 shadow-sm">
+          {ticketJsx}
+        </div>
+
+        <div className="flex w-full flex-col gap-2" style={{ maxWidth: anchoPx }}>
+          <button type="button" onClick={() => window.print()}
+            className="w-full rounded-md bg-primario px-4 py-2 text-sm font-medium text-white transition hover:opacity-90">
+            Imprimir / Guardar PDF
+          </button>
+          <Link href="/protected/pos" className="text-center text-sm text-primario hover:underline">
+            Nueva venta →
+          </Link>
+        </div>
+      </div>
+
+      {/* Solo para impresión */}
+      <div id="ticket-print" style={{ fontFamily: "monospace", fontSize: 11, padding: "2mm" }}>
+        {ticketJsx}
+      </div>
     </>
   );
 }
