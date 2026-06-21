@@ -44,3 +44,12 @@ export async function desactivarProducto(productoId: string) {
 
   revalidatePath("/protected/productos");
 }
+
+export async function reactivarProducto(productoId: string) {
+  const supabase = await createClient();
+  await supabase
+    .from("productos")
+    .update({ activo: true })
+    .eq("id", productoId);
+  revalidatePath("/protected/productos");
+}

@@ -48,12 +48,20 @@ export default async function ComprasPage() {
         </Link>
       </div>
 
-      <Link
-        href="/protected/compras/nueva"
-        className="rounded-md bg-primario px-4 py-3 text-center text-sm font-medium text-white transition hover:opacity-90"
-      >
-        + Registrar compra
-      </Link>
+      <div className="flex flex-wrap gap-3">
+        <Link
+          href="/protected/compras/recibir"
+          className="flex-1 rounded-md bg-primario px-4 py-3 text-center text-sm font-medium text-white transition hover:opacity-90"
+        >
+          📦 Recibir mercancía (express)
+        </Link>
+        <Link
+          href="/protected/compras/nueva"
+          className="flex-1 rounded-md border border-primario px-4 py-3 text-center text-sm font-medium text-primario transition hover:bg-primario-suave"
+        >
+          + Registrar compra completa
+        </Link>
+      </div>
 
       <div className="rounded-lg border border-linea bg-white p-4">
         {compras?.length ? (

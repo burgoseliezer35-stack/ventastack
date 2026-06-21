@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { crearProducto, desactivarProducto } from "./actions";
+import { crearProducto, desactivarProducto, reactivarProducto } from "./actions";
 import { ImportarExcel } from "@/components/importar-excel";
 import { ModalAgregarProducto } from "@/components/modal-agregar-producto";
 import { TablaCatalogo } from "@/components/tabla-catalogo";
@@ -101,6 +101,7 @@ export default async function ProductosPage({
         productos={productos}
         umbralStockBajo={empresa?.umbral_stock_bajo ?? null}
         desactivarProducto={desactivarProducto}
+        reactivarProducto={reactivarProducto}
       />
 
       <Link href="/protected" className="text-sm text-primario hover:underline">
