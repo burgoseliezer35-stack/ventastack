@@ -11,6 +11,10 @@ type Renglon = {
   subtotal: number;
 };
 
+// Anchos estándar de papel térmico en mm
+const ANCHOS = [58, 72, 80] as const;
+type Ancho = (typeof ANCHOS)[number];
+
 export function Recibo({
   pedidoId,
   empresa,
@@ -19,6 +23,7 @@ export function Recibo({
   total,
   fecha,
   renglones,
+  anchoMm = 72,
 }: {
   pedidoId: string;
   empresa: string;
@@ -27,77 +32,153 @@ export function Recibo({
   total: number;
   fecha: string;
   renglones: Renglon[];
+  anchoMm?: number;
 }) {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [ancho, setAncho] = useState<Ancho>(
+    (ANCHOS.includes(anchoMm as Ancho) ? anchoMm : 72) as Ancho
+  );
   const folio = pedidoId.slice(0, 8).toUpperCase();
 
+  // px aproximados para cada ancho de papel
+  const anchoPx = ancho === 58 ? 210 : ancho === 72 ? 260 : 302;
+
   useEffect(() => {
-    // El QR es "dinámico" en el sentido de que se genera al momento,
-    // con los datos reales de ESTA venta — no es una imagen fija.
     const texto = `Ventastack\nFolio: ${folio}\nTotal: $${total.toFixed(2)}`;
-    QRCode.toDataURL(texto, { width: 160, margin: 1 })
+    QRCode.toDataURL(texto, { width: 120, margin: 1 })
       .then(setQrDataUrl)
       .catch(() => setQrDataUrl(null));
   }, [folio, total]);
 
   return (
-    <div className="flex min-h-screen flex-col items-center gap-4 bg-gray-50 px-4 py-10 print:bg-white print:py-0">
-      {/* Ancho de ~72mm, el tamaño típico de un rollo de papel
-          térmico. Fuente monoespaciada para que se vea como ticket. */}
-      <div className="w-full max-w-[280px] rounded-lg border border-gray-200 bg-white p-4 font-mono text-xs text-gray-800 shadow-sm print:rounded-none print:border-0 print:shadow-none">
-        <div className="mb-2 text-center">
-          <p className="text-sm font-bold">{empresa}</p>
-          <p>Folio: {folio}</p>
-          <p>{new Date(fecha).toLocaleString("es-MX")}</p>
-        </div>
+    <>
+      {/* CSS de impresión — define el tamaño de página exacto del
+          rollo térmico y elimina los headers/footers del navegador */}
+      <style>{`
+        @media print {
+          @page {
+            size: ${ancho}mm auto;
+            margin: 2mm;
+          }
+          body > * { display: none !important; }
+          #ticket-print { display: block !important; }
+          #ticket-print * { -webkit-print-color-adjust: exact; }
+        }
+        #ticket-print { display: none; }
+        @media print { #ticket-print { display: block; } }
+      `}</style>
 
-        <div className="border-t border-dashed border-gray-300 py-2">
-          <p>Cliente: {cliente}</p>
-          <p>Pago: {metodoPago}</p>
-        </div>
-
-        <div className="border-t border-dashed border-gray-300 py-2">
-          {renglones.map((r, i) => (
-            <div key={i} className="mb-1 flex justify-between gap-2">
-              <span className="flex-1">
-                {r.cantidad} x {r.nombre}
-              </span>
-              <span>${r.subtotal.toFixed(2)}</span>
-            </div>
+      <div className="flex min-h-screen flex-col items-center gap-4 bg-paper px-4 py-8 print:hidden">
+        {/* Selector de ancho — solo visible en pantalla, no imprime */}
+        <div className="flex items-center gap-3 rounded-lg border border-linea bg-white px-4 py-2 shadow-sm">
+          <span className="text-xs text-ink/60">Ancho de papel:</span>
+          {ANCHOS.map((a) => (
+            <button
+              key={a}
+              type="button"
+              onClick={() => setAncho(a)}
+              className={`rounded px-3 py-1 text-xs font-medium transition ${
+                ancho === a
+                  ? "bg-primario text-white"
+                  : "border border-linea text-ink hover:bg-paper"
+              }`}
+            >
+              {a}mm
+            </button>
           ))}
         </div>
 
-        <div className="flex justify-between border-t border-dashed border-gray-300 py-2 text-sm font-bold">
-          <span>TOTAL</span>
-          <span>${total.toFixed(2)}</span>
+        {/* Vista previa del ticket */}
+        <div
+          style={{ width: anchoPx, fontFamily: "monospace", fontSize: 11 }}
+          className="rounded-lg border border-linea bg-white p-3 shadow-sm"
+        >
+          <TicketContent
+            empresa={empresa}
+            folio={folio}
+            fecha={fecha}
+            cliente={cliente}
+            metodoPago={metodoPago}
+            renglones={renglones}
+            total={total}
+            qrDataUrl={qrDataUrl}
+          />
         </div>
 
-        {qrDataUrl && (
-          <div className="flex flex-col items-center gap-1 border-t border-dashed border-gray-300 py-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={qrDataUrl} alt="Código QR del folio" width={120} height={120} />
-            <p className="text-center text-[10px] text-gray-500">
-              Gracias por tu compra
-            </p>
-          </div>
-        )}
+        <div className="flex w-full flex-col gap-2" style={{ maxWidth: anchoPx }}>
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="w-full rounded-md bg-primario px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
+          >
+            Imprimir / Guardar PDF
+          </button>
+          <Link
+            href="/protected/pos"
+            className="text-center text-sm text-primario hover:underline"
+          >
+            Nueva venta →
+          </Link>
+        </div>
       </div>
 
-      <div className="flex w-full max-w-[280px] flex-col gap-2 print:hidden">
-        <button
-          type="button"
-          onClick={() => window.print()}
-          className="w-full rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700"
-        >
-          Imprimir
-        </button>
-        <Link
-          href="/protected/pos"
-          className="text-center text-sm text-emerald-600 hover:underline"
-        >
-          Nueva venta →
-        </Link>
+      {/* Versión solo para impresión — sin el selector ni botones */}
+      <div id="ticket-print" style={{ fontFamily: "monospace", fontSize: 11, padding: "2mm" }}>
+        <TicketContent
+          empresa={empresa}
+          folio={folio}
+          fecha={fecha}
+          cliente={cliente}
+          metodoPago={metodoPago}
+          renglones={renglones}
+          total={total}
+          qrDataUrl={qrDataUrl}
+        />
       </div>
-    </div>
+    </>
+  );
+}
+
+function TicketContent({
+  empresa, folio, fecha, cliente, metodoPago, renglones, total, qrDataUrl,
+}: {
+  empresa: string; folio: string; fecha: string; cliente: string;
+  metodoPago: string; renglones: Renglon[]; total: number; qrDataUrl: string | null;
+}) {
+  return (
+    <>
+      <div style={{ textAlign: "center", marginBottom: 6 }}>
+        <div style={{ fontWeight: "bold", fontSize: 13 }}>{empresa}</div>
+        <div>Folio: {folio}</div>
+        <div>{new Date(fecha).toLocaleString("es-MX")}</div>
+      </div>
+
+      <div style={{ borderTop: "1px dashed #999", padding: "4px 0" }}>
+        <div>Cliente: {cliente}</div>
+        <div>Pago: {metodoPago}</div>
+      </div>
+
+      <div style={{ borderTop: "1px dashed #999", padding: "4px 0" }}>
+        {renglones.map((r, i) => (
+          <div key={i} style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
+            <span>{r.cantidad} x {r.nombre}</span>
+            <span>${r.subtotal.toFixed(2)}</span>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ borderTop: "1px dashed #999", display: "flex", justifyContent: "space-between", padding: "4px 0", fontWeight: "bold", fontSize: 13 }}>
+        <span>TOTAL</span>
+        <span>${total.toFixed(2)}</span>
+      </div>
+
+      {qrDataUrl && (
+        <div style={{ textAlign: "center", borderTop: "1px dashed #999", paddingTop: 6 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={qrDataUrl} alt="QR" width={90} height={90} style={{ margin: "0 auto" }} />
+          <div style={{ fontSize: 9, color: "#666", marginTop: 2 }}>Gracias por tu compra</div>
+        </div>
+      )}
+    </>
   );
 }

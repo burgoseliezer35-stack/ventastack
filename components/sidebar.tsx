@@ -42,6 +42,7 @@ type ItemNav =
 export function Sidebar({ nombre, rol, esAdmin, esVendedor, nombreEmpresa }: Props) {
   const [abierto, setAbierto] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
 
   const inicial = nombre.charAt(0).toUpperCase() || "?";
 
@@ -113,6 +114,7 @@ export function Sidebar({ nombre, rol, esAdmin, esVendedor, nombreEmpresa }: Pro
       etiqueta: "Compras",
       Icono: Truck,
       items: [
+        { href: "/protected/compras/recibir", etiqueta: "Recibir mercancía" },
         { href: "/protected/compras", etiqueta: "Historial" },
         { href: "/protected/proveedores", etiqueta: "Proveedores" },
       ],
@@ -131,39 +133,18 @@ export function Sidebar({ nombre, rol, esAdmin, esVendedor, nombreEmpresa }: Pro
     enlaces.push({ tipo: "enlace", href: "/protected/configuracion", etiqueta: "Configuración", Icono: Settings });
   }
 
+  const tabsMobile = [
+    { href: "/protected", etiqueta: "Inicio", Icono: LayoutDashboard },
+    { href: "/protected/pos", etiqueta: "POS", Icono: Store },
+    { href: "/protected/pedidos", etiqueta: "Ventas", Icono: History },
+    { href: "/protected/clientes", etiqueta: "Clientes", Icono: Users },
+    { href: "#menu", etiqueta: "Más", Icono: Menu },
+  ];
+
   return (
     <>
-      <div className="sticky top-0 z-20 flex items-center justify-between border-b border-linea bg-white px-3 py-2 md:hidden">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primario text-xs font-bold text-white">
-            {nombreEmpresa?.charAt(0)?.toUpperCase() ?? "V"}
-          </div>
-          <span className="text-sm font-semibold text-ink">{nombreEmpresa ?? "Ventastack"}</span>
-        </div>
-        <button onClick={() => setAbierto(true)} className="rounded-md p-1.5 text-ink hover:bg-paper" aria-label="Abrir menú">
-          <Menu size={20} />
-        </button>
-      </div>
-
-      {abierto && (
-        <div
-          className="fixed inset-0 z-30 bg-black/30 md:hidden"
-          onClick={() => setAbierto(false)}
-        />
-      )}
-
-      <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col bg-white transition-transform duration-200 md:sticky md:top-0 md:h-screen md:translate-x-0 md:border-r md:border-linea ${
-          abierto ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <div className="flex items-center justify-between border-b border-linea p-4 md:hidden">
-          <span className="font-bold text-ink">Menú</span>
-          <button onClick={() => setAbierto(false)} className="text-ink" aria-label="Cerrar menú">
-            <X size={20} />
-          </button>
-        </div>
-
+      {/* Desktop sidebar */}
+      <aside className="hidden md:sticky md:top-0 md:flex md:h-screen md:w-64 md:flex-col md:border-r md:border-linea md:bg-white">
         <div className="flex flex-col items-center gap-2 border-b border-linea p-6">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primario text-xl font-bold text-white">
             {inicial}
@@ -171,31 +152,75 @@ export function Sidebar({ nombre, rol, esAdmin, esVendedor, nombreEmpresa }: Pro
           <p className="text-center font-semibold text-ink">{nombre}</p>
           <span className="insignia bg-primario-suave text-primario">{rol}</span>
         </div>
-
         <nav className="flex flex-1 flex-col gap-1 p-3">
           {enlaces.map((item) =>
             item.tipo === "enlace" ? (
-              <EnlaceNav
-                key={item.href}
-                item={item}
-                activo={pathname === item.href}
-                onClick={() => setAbierto(false)}
-              />
+              <EnlaceNav key={item.href} item={item} activo={pathname === item.href} onClick={() => {}} />
             ) : (
-              <GrupoNav
-                key={item.etiqueta}
-                item={item}
-                pathname={pathname}
-                onNavegar={() => setAbierto(false)}
-              />
+              <GrupoNav key={item.etiqueta} item={item} pathname={pathname} onNavegar={() => {}} />
             ),
           )}
         </nav>
-
-        <div className="border-t border-linea p-3">
-          <BotonSalir />
-        </div>
+        <div className="border-t border-linea p-3"><BotonSalir /></div>
       </aside>
+
+      {/* Mobile: top bar */}
+      <div className="sticky top-0 z-20 flex items-center justify-between border-b border-linea bg-white px-3 py-2 md:hidden">
+        <div className="flex items-center gap-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primario text-xs font-bold text-white">
+            {nombreEmpresa?.charAt(0)?.toUpperCase() ?? "V"}
+          </div>
+          <span className="text-sm font-semibold text-ink">{nombreEmpresa ?? "Ventastack"}</span>
+        </div>
+        <span className="text-xs text-ink/50">{nombre}</span>
+      </div>
+
+      {/* Overlay */}
+      {abierto && <div className="fixed inset-0 z-30 bg-black/40 md:hidden" onClick={() => setAbierto(false)} />}
+
+      {/* Drawer completo */}
+      <aside className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col bg-white transition-transform duration-200 md:hidden ${abierto ? "translate-x-0" : "-translate-x-full"}`}>
+        <div className="flex items-center justify-between border-b border-linea p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primario text-sm font-bold text-white">{inicial}</div>
+            <div>
+              <p className="font-semibold text-ink leading-tight">{nombre}</p>
+              <span className="text-xs text-ink/50">{rol}</span>
+            </div>
+          </div>
+          <button onClick={() => setAbierto(false)} className="text-ink/40 hover:text-ink"><X size={20} /></button>
+        </div>
+        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
+          {enlaces.map((item) =>
+            item.tipo === "enlace" ? (
+              <EnlaceNav key={item.href} item={item} activo={pathname === item.href} onClick={() => setAbierto(false)} />
+            ) : (
+              <GrupoNav key={item.etiqueta} item={item} pathname={pathname} onNavegar={() => setAbierto(false)} />
+            ),
+          )}
+        </nav>
+        <div className="border-t border-linea p-3"><BotonSalir /></div>
+      </aside>
+
+      {/* Bottom tab bar móvil */}
+      <nav className="fixed bottom-0 left-0 right-0 z-20 flex items-center justify-around border-t border-linea bg-white md:hidden" style={{paddingBottom: "env(safe-area-inset-bottom)"}}>
+        {tabsMobile.map(({ href, etiqueta, Icono }) => {
+          const esMenu = href === "#menu";
+          const activo = !esMenu && pathname === href;
+          return (
+            <button
+              key={href}
+              type="button"
+              onClick={() => esMenu ? setAbierto(true) : router.push(href)}
+              className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition ${activo ? "text-primario" : "text-ink/50"}`}
+            >
+              <Icono size={21} strokeWidth={activo ? 2.5 : 1.8} />
+              {etiqueta}
+            </button>
+          );
+        })}
+      </nav>
+      <div className="h-16 md:hidden" />
     </>
   );
 }

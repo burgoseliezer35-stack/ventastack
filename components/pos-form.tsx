@@ -39,7 +39,28 @@ export function PosForm({
   clientes: Cliente[];
   geminiDisponible: boolean;
 }) {
-  const [carrito, setCarrito] = useState<ItemCarrito[]>([]);
+  const [carrito, setCarritoRaw] = useState<ItemCarrito[]>(() => {
+    // Al montar, intentamos recuperar el carrito de esta sesión —
+    // así si el cajero cambia de pantalla y regresa, no pierde lo
+    // que estaba armando.
+    if (typeof window === "undefined") return [];
+    try {
+      const guardado = sessionStorage.getItem("ventastack_carrito");
+      return guardado ? (JSON.parse(guardado) as ItemCarrito[]) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const setCarrito = (fn: ItemCarrito[] | ((prev: ItemCarrito[]) => ItemCarrito[])) => {
+    setCarritoRaw((prev) => {
+      const siguiente = typeof fn === "function" ? fn(prev) : fn;
+      try {
+        sessionStorage.setItem("ventastack_carrito", JSON.stringify(siguiente));
+      } catch { /* no pasa nada */ }
+      return siguiente;
+    });
+  };
   const [productoSeleccionado, setProductoSeleccionado] = useState(
     productos[0]?.id ?? "",
   );
@@ -351,11 +372,10 @@ export function PosForm({
     fetch("/api/verificar-stock-bajo", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        productoIds: carrito.map((i) => i.producto_id),
-      }),
+      body: JSON.stringify({ productoIds: carrito.map((i) => i.producto_id) }),
     }).catch(() => {});
 
+    try { sessionStorage.removeItem("ventastack_carrito"); } catch { /* ok */ }
     router.push(`/protected/pos/recibo/${pedidoId}`);
   };
 

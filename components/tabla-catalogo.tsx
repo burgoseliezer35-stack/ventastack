@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Pencil, Layers, History, PlusCircle, PowerOff } from "lucide-react";
+import { Pencil, Layers, History, PlusCircle, PowerOff, Power } from "lucide-react";
 
 type Producto = {
   id: string;
@@ -19,10 +19,12 @@ export function TablaCatalogo({
   productos,
   umbralStockBajo,
   desactivarProducto,
+  reactivarProducto,
 }: {
   productos: Producto[];
   umbralStockBajo: number | null;
   desactivarProducto: (productoId: string) => Promise<void>;
+  reactivarProducto: (productoId: string) => Promise<void>;
 }) {
   const [busqueda, setBusqueda] = useState("");
 
@@ -132,14 +134,16 @@ export function TablaCatalogo({
                         >
                           <History size={16} />
                         </Link>
-                        {p.activo && (
+                        {p.activo ? (
                           <form action={desactivarProducto.bind(null, p.id)}>
-                            <button
-                              type="submit"
-                              title="Desactivar"
-                              className="hover:text-red-600"
-                            >
+                            <button type="submit" title="Desactivar" className="hover:text-red-600">
                               <PowerOff size={16} />
+                            </button>
+                          </form>
+                        ) : (
+                          <form action={reactivarProducto.bind(null, p.id)}>
+                            <button type="submit" title="Reactivar" className="hover:text-verde">
+                              <Power size={16} />
                             </button>
                           </form>
                         )}
