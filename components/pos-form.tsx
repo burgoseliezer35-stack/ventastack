@@ -285,8 +285,16 @@ export function PosForm({
       return;
     }
 
-    agregarProductoAlCarrito(producto);
+    // Siempre selecciona el producto en el selector para mostrarlo
+    setProductoSeleccionado(producto.id);
     setCodigoBarras("");
+
+    // Solo agrega al carrito si tiene stock
+    if (producto.stock > 0) {
+      agregarProductoAlCarrito(producto);
+    } else {
+      setError(`"${producto.nombre}" no tiene stock — recíbelo primero en Compras`);
+    }
   };
 
   const cambiarCantidad = (productoId: string, cantidad: number) => {
@@ -425,7 +433,7 @@ export function PosForm({
             >
               {productos.map((p) => (
                 <option key={p.id} value={p.id} disabled={p.stock <= 0}>
-                  {p.nombre} — ${p.precio.toFixed(2)}{" "}
+                  {p.nombre} — ${p.precio.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}{" "}
                   {p.stock <= 0 ? "(sin stock)" : `(${p.stock})`}
                   {p.niveles.length > 0 ? " · mayoreo" : ""}
                 </option>
@@ -448,7 +456,7 @@ export function PosForm({
                   )}
                 </div>
                 <p className="text-[10px] font-semibold text-ink leading-tight line-clamp-2">{p.nombre}</p>
-                <p className="text-sm font-bold text-primario cifra">${p.precio.toFixed(2)}</p>
+                <p className="text-sm font-bold text-primario cifra">${p.precio.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</p>
                 <p className="text-[9px] text-ink/40">{p.stock} disp.</p>
               </div>
             );
@@ -539,10 +547,10 @@ export function PosForm({
                       />
                     </td>
                     <td className="cifra px-4 py-2.5 text-right text-ink/70">
-                      ${item.precio_unitario.toFixed(2)}
+                      ${item.precio_unitario.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}
                     </td>
                     <td className="cifra px-4 py-2.5 text-right font-medium text-ink">
-                      ${(item.precio_unitario * item.cantidad).toFixed(2)}
+                      ${(item.precio_unitario * item.cantidad).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}
                     </td>
                     <td className="px-4 py-2.5 text-right">
                       <button
@@ -600,7 +608,7 @@ export function PosForm({
         <div className="flex h-fit flex-col gap-4 rounded-xl bg-primario p-5 text-white shadow-sm">
           <div>
             <p className="text-xs uppercase tracking-wide text-white/70">Total a cobrar</p>
-            <p className="cifra text-3xl font-bold">${total.toFixed(2)}</p>
+            <p className="cifra text-3xl font-bold">${total.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</p>
           </div>
 
           <div>
@@ -653,7 +661,7 @@ export function PosForm({
                 step="0.01"
                 value={efectivoRecibido}
                 onChange={(e) => setEfectivoRecibido(e.target.value)}
-                placeholder={total > 0 ? total.toFixed(2) : "0.00"}
+                placeholder={total > 0 ? total.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}) : "0.00"}
                 className="w-full rounded-md border border-white/20 bg-white/10 px-3 py-2 text-sm text-white outline-none placeholder:text-white/40"
               />
               {cambio !== null && (
@@ -664,7 +672,7 @@ export function PosForm({
                 >
                   <span>{faltaEfectivo ? "Falta" : "Cambio"}</span>
                   <span className="cifra font-bold">
-                    ${Math.abs(cambio).toFixed(2)}
+                    ${Math.abs(cambio).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}
                   </span>
                 </div>
               )}

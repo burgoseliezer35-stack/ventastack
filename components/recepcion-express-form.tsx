@@ -206,29 +206,34 @@ export function RecepcionExpressForm({
                   <td className="px-4 py-2.5 text-right">
                     <input
                       id={`cant-${l.producto_id}`}
-                      type="number"
-                      min={1}
-                      value={l.cantidad}
-                      onChange={(e) =>
-                        actualizarLinea(l.producto_id, "cantidad", Number(e.target.value))
-                      }
-                      className="w-20 rounded-md border border-linea px-2 py-1 text-right"
+                      type="text"
+                      inputMode="numeric"
+                      defaultValue={l.cantidad === 0 ? "" : String(l.cantidad)}
+                      placeholder="0"
+                      onFocus={(e) => e.target.select()}
+                      onBlur={(e) => {
+                        const val = parseInt(e.target.value.replace(/,/g, ""), 10) || 0;
+                        actualizarLinea(l.producto_id, "cantidad", val);
+                      }}
+                      className="w-20 rounded-md border border-linea px-2 py-2 text-right focus:border-primario focus:outline-none"
                     />
                   </td>
                   <td className="px-4 py-2.5 text-right">
                     <input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={l.costo_unitario}
-                      onChange={(e) =>
-                        actualizarLinea(l.producto_id, "costo_unitario", Number(e.target.value))
-                      }
-                      className="w-24 rounded-md border border-linea px-2 py-1 text-right"
+                      type="text"
+                      inputMode="decimal"
+                      defaultValue={l.costo_unitario === 0 ? "" : l.costo_unitario.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}
+                      placeholder="0.00"
+                      onFocus={(e) => e.target.select()}
+                      onBlur={(e) => {
+                        const val = parseFloat(e.target.value.replace(/,/g, "")) || 0;
+                        actualizarLinea(l.producto_id, "costo_unitario", val);
+                      }}
+                      className="w-24 rounded-md border border-linea px-2 py-2 text-right focus:border-primario focus:outline-none"
                     />
                   </td>
                   <td className="cifra px-4 py-2.5 text-right font-medium text-ink">
-                    ${(l.cantidad * l.costo_unitario).toFixed(2)}
+                    ${(l.cantidad * l.costo_unitario).toLocaleString("en-US", {minimumFractionDigits:2,maximumFractionDigits:2})}
                   </td>
                   <td className="px-4 py-2.5 text-right">
                     <button
@@ -245,7 +250,7 @@ export function RecepcionExpressForm({
           </table>
           <div className="flex justify-end border-t border-linea px-4 py-3">
             <span className="text-sm font-semibold text-ink">
-              Total: <span className="cifra text-primario">${totalCosto.toFixed(2)}</span>
+              Total: <span className="cifra text-primario">${totalCosto.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
             </span>
           </div>
         </div>

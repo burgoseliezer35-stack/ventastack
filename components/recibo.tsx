@@ -44,7 +44,7 @@ export function Recibo({
   const anchoPx = ancho === 58 ? 210 : ancho === 72 ? 260 : 302;
 
   useEffect(() => {
-    const texto = `Ventastack\nFolio: ${folio}\nTotal: $${total.toFixed(2)}`;
+    const texto = `Ventastack\nFolio: ${folio}\nTotal: $${total.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
     QRCode.toDataURL(texto, { width: 120, margin: 1 })
       .then(setQrDataUrl)
       .catch(() => setQrDataUrl(null));
@@ -162,14 +162,14 @@ function TicketContent({
         {renglones.map((r, i) => (
           <div key={i} style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
             <span>{r.cantidad} x {r.nombre}</span>
-            <span>${r.subtotal.toFixed(2)}</span>
+            <span>${r.subtotal.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
           </div>
         ))}
       </div>
 
       <div style={{ borderTop: "1px dashed #999", display: "flex", justifyContent: "space-between", padding: "4px 0", fontWeight: "bold", fontSize: 13 }}>
         <span>TOTAL</span>
-        <span>${total.toFixed(2)}</span>
+        <span>${total.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
       </div>
 
       {qrDataUrl && (

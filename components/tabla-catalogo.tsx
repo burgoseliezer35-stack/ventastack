@@ -106,13 +106,13 @@ export function TablaCatalogo({
                     </td>
                     <td className="px-4 py-2.5 text-ink/60">{p.categoria ?? "—"}</td>
                     <td className="cifra px-4 py-2.5 text-right text-ink/60">
-                      ${p.costo.toFixed(2)}
+                      ${p.costo.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}
                     </td>
                     <td className="cifra px-4 py-2.5 text-right text-ink">
-                      ${p.precio.toFixed(2)}
+                      ${p.precio.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}
                     </td>
                     <td className="cifra px-4 py-2.5 text-right text-verde">
-                      ${(p.precio - p.costo).toFixed(2)}
+                      ${(p.precio - p.costo).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}
                     </td>
                     <td
                       className={`cifra px-4 py-2.5 text-right font-medium ${

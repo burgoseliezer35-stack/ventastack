@@ -9,7 +9,7 @@ const csp = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: https://*.tile.openstreetmap.org",
+  "img-src 'self' data: https://*.tile.openstreetmap.org https://images.openfoodfacts.org https://static.openfoodfacts.org",
   "connect-src 'self' https://*.supabase.co",
   "font-src 'self' data:",
   "object-src 'none'",
