@@ -11,16 +11,15 @@ export async function crearProducto(formData: FormData) {
   const precio = Number(formData.get("precio"));
   const categoriaId = (formData.get("categoria_id") as string) || null;
   const codigoBarras = (formData.get("codigo_barras") as string)?.trim() || null;
+  const imagenUrl = (formData.get("imagen_url") as string)?.trim() || null;
 
   if (!nombre || !Number.isFinite(precio) || precio <= 0) {
     return;
   }
 
-  // No mandamos company_id: la columna lo rellena sola (ver
-  // 006_catalogo_y_punto_de_venta.sql), y RLS revisa que coincida.
   const { error } = await supabase
     .from("productos")
-    .insert({ nombre, precio, categoria_id: categoriaId, codigo_barras: codigoBarras });
+    .insert({ nombre, precio, categoria_id: categoriaId, codigo_barras: codigoBarras, imagen_url: imagenUrl });
 
   if (error) {
     // El error más probable aquí: ese código de barras ya lo tiene

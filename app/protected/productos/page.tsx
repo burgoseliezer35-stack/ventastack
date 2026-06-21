@@ -48,7 +48,7 @@ export default async function ProductosPage({
 
   const { data: productosRaw } = await supabase
     .from("productos")
-    .select("id, nombre, precio, costo, activo, stock, codigo_barras, categorias(nombre)")
+    .select("id, nombre, precio, costo, activo, stock, codigo_barras, imagen_url, categorias(nombre)")
     .order("nombre");
 
   const { data: empresa } = await supabase
@@ -65,6 +65,7 @@ export default async function ProductosPage({
     activo: p.activo,
     stock: p.stock,
     codigo_barras: p.codigo_barras,
+    imagen_url: p.imagen_url,
     categoria: Array.isArray(p.categorias)
       ? p.categorias[0]?.nombre ?? null
       : (p.categorias as { nombre: string } | null)?.nombre ?? null,
