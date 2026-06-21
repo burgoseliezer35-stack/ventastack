@@ -12,6 +12,7 @@ type Producto = {
   precio: number;
   stock: number;
   codigo_barras: string | null;
+  imagen_url: string | null;
   niveles: NivelMayoreo[];
 };
 type Cliente = { id: string; nombre: string };
@@ -401,8 +402,8 @@ export function PosForm({
           </div>
         </div>
 
-        <div className="flex flex-[2] gap-2">
-          <div className="flex flex-1 flex-col gap-1">
+        <div className="flex flex-[2] gap-2 flex-wrap sm:flex-nowrap">
+          <div className="flex flex-1 flex-col gap-1 min-w-[180px]">
             <input
               type="text"
               placeholder="Filtrar productos..."
@@ -431,10 +432,32 @@ export function PosForm({
               ))}
             </select>
           </div>
+
+          {/* Vista previa elegante del producto seleccionado */}
+          {(() => {
+            const p = productos.find((x) => x.id === productoSeleccionado);
+            if (!p) return null;
+            return (
+              <div className="flex flex-col items-center gap-1.5 rounded-xl border border-linea bg-white p-3 shadow-sm w-28 shrink-0 text-center">
+                <div className="h-16 w-16 rounded-xl border border-linea bg-paper overflow-hidden flex items-center justify-center shadow-inner">
+                  {p.imagen_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={p.imagen_url} alt={p.nombre} className="h-full w-full object-contain" />
+                  ) : (
+                    <span className="text-3xl">📦</span>
+                  )}
+                </div>
+                <p className="text-[10px] font-semibold text-ink leading-tight line-clamp-2">{p.nombre}</p>
+                <p className="text-sm font-bold text-primario cifra">${p.precio.toFixed(2)}</p>
+                <p className="text-[9px] text-ink/40">{p.stock} disp.</p>
+              </div>
+            );
+          })()}
+
           <button
             type="button"
             onClick={agregarAlCarrito}
-            className="rounded-md bg-primario px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
+            className="rounded-md bg-primario px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 shrink-0 self-end"
           >
             Agregar
           </button>
