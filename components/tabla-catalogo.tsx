@@ -13,6 +13,7 @@ type Producto = {
   stock: number;
   codigo_barras: string | null;
   categoria: string | null;
+  imagen_url: string | null;
 };
 
 export function TablaCatalogo({
@@ -80,12 +81,28 @@ export function TablaCatalogo({
                     className={bajo ? "bg-red-50" : idx % 2 === 1 ? "bg-paper/60" : ""}
                   >
                     <td className="px-4 py-2.5">
-                      <span className={p.activo ? "text-ink" : "text-ink/40 line-through"}>
-                        {p.nombre}
-                      </span>
-                      {p.codigo_barras && (
-                        <span className="ml-2 text-xs text-ink/40">#{p.codigo_barras}</span>
-                      )}
+                      <div className="flex items-center gap-3">
+                        {p.imagen_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={p.imagen_url}
+                            alt={p.nombre}
+                            className="h-9 w-9 rounded-md object-contain border border-linea bg-white shrink-0"
+                          />
+                        ) : (
+                          <div className="h-9 w-9 rounded-md border border-linea bg-paper shrink-0 flex items-center justify-center text-ink/20 text-xs">
+                            📦
+                          </div>
+                        )}
+                        <div>
+                          <span className={p.activo ? "text-ink" : "text-ink/40 line-through"}>
+                            {p.nombre}
+                          </span>
+                          {p.codigo_barras && (
+                            <span className="ml-2 text-xs text-ink/40">#{p.codigo_barras}</span>
+                          )}
+                        </div>
+                      </div>
                     </td>
                     <td className="px-4 py-2.5 text-ink/60">{p.categoria ?? "—"}</td>
                     <td className="cifra px-4 py-2.5 text-right text-ink/60">
