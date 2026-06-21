@@ -13,6 +13,22 @@ export default function NuevaEmpresaPage() {
         className="flex flex-col gap-4 rounded-lg border border-linea bg-white p-6"
       >
         <div>
+          <label htmlFor="tipo_negocio" className="block text-sm font-medium text-ink">
+            Tipo de negocio
+          </label>
+          <select
+            id="tipo_negocio"
+            name="tipo_negocio"
+            className="mt-1 w-full rounded-md border border-linea px-3 py-2 text-ink focus:border-primario focus:outline-none"
+          >
+            <option value="tienda">🏪 Tienda / Miscelánea / Abarrotes</option>
+            <option value="distribuidor">🚚 Distribuidor / Ruta de ventas</option>
+            <option value="restaurante">🍽️ Restaurante / Cafetería</option>
+            <option value="taller">🔧 Taller / Servicio técnico</option>
+          </select>
+        </div>
+
+        <div>
           <label htmlFor="nombre" className="block text-sm font-medium text-ink">
             Nombre del negocio
           </label>
