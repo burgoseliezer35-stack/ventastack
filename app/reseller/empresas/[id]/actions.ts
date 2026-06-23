@@ -83,10 +83,15 @@ export async function borrarEmpresa(companyId: string) {
 
 export async function actualizarTipoNegocio(companyId: string, formData: FormData) {
   const supabase = await createClient();
-  const tipoNegocio = formData.get("tipo_negocio") as string;
+  const tiposNegocio = formData.getAll("tipos_negocio") as string[];
   const buscadorProductos = formData.get("buscador_productos") as string;
+
+  // Mantiene compatibilidad: tipo_negocio = primer tipo seleccionado
+  const tipoNegocio = tiposNegocio[0] ?? "tienda";
+
   await supabase.from("companies").update({
     tipo_negocio: tipoNegocio,
+    tipos_negocio: tiposNegocio.length > 0 ? tiposNegocio : ["tienda"],
     buscador_productos: buscadorProductos || undefined,
   }).eq("id", companyId);
   revalidatePath(`/reseller/empresas/${companyId}`);

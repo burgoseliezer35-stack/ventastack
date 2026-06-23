@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { ServiceWorkerRegistrar } from "@/components/service-worker-registrar";
 import { Sidebar } from "@/components/sidebar";
 import { LogoutButton } from "@/components/logout-button";
 import { CompartirUbicacion } from "@/components/compartir-ubicacion";
@@ -46,7 +47,7 @@ export default async function ProtectedLayout({
 
   const { data: empresa } = await supabase
     .from("companies")
-    .select("activa, name, tipo_negocio")
+    .select("activa, name, tipo_negocio, tipos_negocio")
     .eq("id", perfil.company_id)
     .single();
 
@@ -70,7 +71,9 @@ export default async function ProtectedLayout({
   const esVendedor = perfil.role === "vendedor";
 
   return (
-    <div className="flex min-h-screen flex-col bg-paper md:flex-row print:hidden">
+    <>
+      <ServiceWorkerRegistrar />
+      <div className="flex min-h-screen flex-col bg-paper md:flex-row print:hidden">
       <Sidebar
         nombre={perfil.full_name ?? "Usuario"}
         rol={perfil.role ?? "—"}
@@ -78,9 +81,11 @@ export default async function ProtectedLayout({
         esVendedor={esVendedor}
         nombreEmpresa={empresa?.name ?? undefined}
         tipoNegocio={empresa?.tipo_negocio ?? "tienda"}
+        tiposNegocio={(empresa as {tipos_negocio?: string[] | null})?.tipos_negocio ?? []}
       />
       <main className="flex-1 px-4 py-6 md:px-8 md:py-8">{children}</main>
       {esVendedor && <CompartirUbicacion />}
     </div>
+    </>
   );
 }

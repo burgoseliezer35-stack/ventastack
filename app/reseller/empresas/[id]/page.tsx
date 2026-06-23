@@ -35,11 +35,15 @@ export default async function EmpresaDetallePage({
 
   const empresaCompleta = { ...empresa, ...(empresaExtra ?? {}) };
 
-  const { data: pagos } = await supabase
-    .from("pagos_plataforma")
-    .select("id, monto, nota, created_at")
-    .eq("company_id", id)
-    .order("created_at", { ascending: false });
+  let pagos: { id: string; monto: number; nota: string | null; created_at: string }[] = [];
+  try {
+    const { data: _pagos } = await supabase
+      .from("pagos_plataforma")
+      .select("id, monto, nota, created_at")
+      .eq("company_id", id)
+      .order("created_at", { ascending: false });
+    pagos = _pagos ?? [];
+  } catch { pagos = []; }
 
   return (
     <div className="flex flex-col gap-6">
@@ -142,22 +146,42 @@ export default async function EmpresaDetallePage({
         )}
       </div>
 
-      {/* Tipo de negocio */}
+      {/* Tipo de negocio — multi-selección */}
       <form
         action={actualizarTipoNegocio.bind(null, empresaCompleta.id)}
         className="flex flex-col gap-3 rounded-lg border border-linea bg-white p-4"
       >
-        <label className="text-sm font-medium text-ink">Giro / tipo de negocio</label>
-        <select
-          name="tipo_negocio"
-          defaultValue={empresaCompleta.tipo_negocio ?? "tienda"}
-          className="w-full rounded-md border border-linea px-3 py-2 text-sm text-ink focus:border-primario focus:outline-none"
-        >
-          <option value="tienda">🏪 Tienda / Miscelánea / Abarrotes</option>
-          <option value="distribuidor">🚚 Distribuidor / Ruta de ventas</option>
-          <option value="restaurante">🍽️ Restaurante / Cafetería</option>
-          <option value="taller">🔧 Taller / Servicio técnico</option>
-        </select>
+        <div>
+          <label className="text-sm font-medium text-ink">Giro / tipo de negocio</label>
+          <p className="text-xs text-ink/50 mt-0.5">Selecciona uno o más (el menú se adapta)</p>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            { val: "tienda", label: "🏪 Tienda / Abarrotes" },
+            { val: "distribuidor", label: "🚚 Distribuidor / Ruta" },
+            { val: "restaurante", label: "🍽️ Restaurante" },
+            { val: "taller", label: "🔧 Taller / Servicio" },
+            { val: "farmacia", label: "💊 Farmacia" },
+            { val: "ferreteria", label: "🔨 Ferretería" },
+            { val: "tecnologia", label: "💻 Tecnología" },
+            { val: "papeleria", label: "📚 Papelería" },
+          ].map(({ val, label }) => {
+            const tipos = (empresaCompleta as { tipos_negocio?: string[] | null }).tipos_negocio ?? [(empresaCompleta as { tipo_negocio?: string | null }).tipo_negocio ?? "tienda"];
+            const activo = tipos.includes(val);
+            return (
+              <label key={val} className={`flex items-center gap-2 rounded-lg border p-3 cursor-pointer transition ${activo ? "border-primario bg-primario-suave" : "border-linea hover:border-primario/50"}`}>
+                <input
+                  type="checkbox"
+                  name="tipos_negocio"
+                  value={val}
+                  defaultChecked={activo}
+                  className="accent-primario"
+                />
+                <span className="text-xs font-medium text-ink">{label}</span>
+              </label>
+            );
+          })}
+        </div>
 
         <label className="text-sm font-medium text-ink">Buscador de productos</label>
         <select
