@@ -43,7 +43,7 @@ export default async function ProtectedPage() {
 
   const [
     { count: totalProductos },
-    { count: _totalClientes },
+    { count: _c },
     { count: totalEquipo },
     { data: ventasHoy },
     { data: ventasAyer },
