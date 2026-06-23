@@ -14,13 +14,26 @@ export default async function EmpresaDetallePage({
 
   const { data: empresa } = await supabase
     .from("companies")
-    .select("id, name, created_at, precio_mensual, activa, tipo_negocio, buscador_productos, buscadores_config")
+    .select("id, name, created_at, precio_mensual, activa")
     .eq("id", id)
     .single();
 
   if (!empresa) {
     notFound();
   }
+
+  // Intentamos cargar columnas nuevas por separado — si no existen aún, no rompe
+  let empresaExtra: { tipo_negocio?: string | null; buscador_productos?: string | null; buscadores_config?: Record<string, { activo: boolean; api_key: string | null }> | null } | null = null;
+  try {
+    const { data: _extra } = await supabase
+      .from("companies")
+      .select("tipo_negocio, buscador_productos, buscadores_config")
+      .eq("id", id)
+      .single();
+    empresaExtra = _extra;
+  } catch { empresaExtra = null; }
+
+  const empresaCompleta = { ...empresa, ...(empresaExtra ?? {}) };
 
   const { data: pagos } = await supabase
     .from("pagos_plataforma")
@@ -31,28 +44,28 @@ export default async function EmpresaDetallePage({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-bold text-ink">{empresa.name}</h1>
+        <h1 className="text-xl font-bold text-ink">{empresaCompleta.name}</h1>
         <p className="text-xs text-ink/50">
-          Desde {new Date(empresa.created_at).toLocaleDateString("es-MX")}
+          Desde {new Date(empresaCompleta.created_at).toLocaleDateString("es-MX")}
         </p>
       </div>
 
       <div className="flex items-center justify-between rounded-lg border border-linea bg-white p-4">
-        <span className={`insignia ${empresa.activa ? "text-verde" : "text-primario"}`}>
-          {empresa.activa ? "activo" : "desactivado"}
+        <span className={`insignia ${empresaCompleta.activa ? "text-verde" : "text-primario"}`}>
+          {empresaCompleta.activa ? "activo" : "desactivado"}
         </span>
-        <form action={cambiarEstado.bind(null, empresa.id, !empresa.activa)}>
+        <form action={cambiarEstado.bind(null, empresaCompleta.id, !empresaCompleta.activa)}>
           <button
             type="submit"
             className="rounded-md border border-linea px-4 py-2 text-sm font-medium text-ink transition hover:border-primario"
           >
-            {empresa.activa ? "Desactivar" : "Activar"}
+            {empresaCompleta.activa ? "Desactivar" : "Activar"}
           </button>
         </form>
       </div>
 
       <form
-        action={actualizarPrecio.bind(null, empresa.id)}
+        action={actualizarPrecio.bind(null, empresaCompleta.id)}
         className="flex flex-col gap-3 rounded-lg border border-linea bg-white p-4"
       >
         <label htmlFor="precio_mensual" className="text-sm font-medium text-ink">
@@ -65,7 +78,7 @@ export default async function EmpresaDetallePage({
             type="number"
             step="0.01"
             min="0"
-            defaultValue={empresa.precio_mensual}
+            defaultValue={empresaCompleta.precio_mensual}
             className="flex-1 rounded-md border border-linea px-3 py-2 text-ink focus:border-primario focus:outline-none"
           />
           <button
@@ -78,7 +91,7 @@ export default async function EmpresaDetallePage({
       </form>
 
       <form
-        action={registrarPago.bind(null, empresa.id)}
+        action={registrarPago.bind(null, empresaCompleta.id)}
         className="flex flex-col gap-3 rounded-lg border border-linea bg-white p-4"
       >
         <h2 className="text-sm font-medium text-ink">Registrar un pago</h2>
@@ -131,13 +144,13 @@ export default async function EmpresaDetallePage({
 
       {/* Tipo de negocio */}
       <form
-        action={actualizarTipoNegocio.bind(null, empresa.id)}
+        action={actualizarTipoNegocio.bind(null, empresaCompleta.id)}
         className="flex flex-col gap-3 rounded-lg border border-linea bg-white p-4"
       >
         <label className="text-sm font-medium text-ink">Giro / tipo de negocio</label>
         <select
           name="tipo_negocio"
-          defaultValue={empresa.tipo_negocio ?? "tienda"}
+          defaultValue={empresaCompleta.tipo_negocio ?? "tienda"}
           className="w-full rounded-md border border-linea px-3 py-2 text-sm text-ink focus:border-primario focus:outline-none"
         >
           <option value="tienda">🏪 Tienda / Miscelánea / Abarrotes</option>
@@ -149,7 +162,7 @@ export default async function EmpresaDetallePage({
         <label className="text-sm font-medium text-ink">Buscador de productos</label>
         <select
           name="buscador_productos"
-          defaultValue={empresa.buscador_productos ?? "openfoodfacts"}
+          defaultValue={empresaCompleta.buscador_productos ?? "openfoodfacts"}
           className="w-full rounded-md border border-linea px-3 py-2 text-sm text-ink focus:border-primario focus:outline-none"
         >
           <option value="openfoodfacts">🥫 Open Food Facts — abarrotes / alimentos</option>
@@ -173,8 +186,8 @@ export default async function EmpresaDetallePage({
           </p>
         </div>
         <ConfiguradorBuscadores
-          companyId={empresa.id}
-          configActual={empresa.buscadores_config as Parameters<typeof ConfiguradorBuscadores>[0]["configActual"]}
+          companyId={empresaCompleta.id}
+          configActual={empresaCompleta.buscadores_config as Parameters<typeof ConfiguradorBuscadores>[0]["configActual"]}
           onGuardar={guardarBuscadores}
         />
       </div>
@@ -187,12 +200,12 @@ export default async function EmpresaDetallePage({
             Si el negocio tiene historial de ventas, solo se desactivará. Si es una cuenta de prueba sin ventas, se borrará permanentemente.
           </p>
         </div>
-        <form action={borrarEmpresa.bind(null, empresa.id)}>
+        <form action={borrarEmpresa.bind(null, empresaCompleta.id)}>
           <button
             type="submit"
             className="rounded-md border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100"
             onClick={(e) => {
-              if (!confirm(`¿Seguro que quieres eliminar "${empresa.name}"? Esta acción puede no ser reversible.`)) {
+              if (!confirm(`¿Seguro que quieres eliminar "${empresaCompleta.name}"? Esta acción puede no ser reversible.`)) {
                 e.preventDefault();
               }
             }}
