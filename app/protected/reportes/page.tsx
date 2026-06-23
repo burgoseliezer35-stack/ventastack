@@ -116,7 +116,18 @@ export default async function ReportesPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <h1 className="text-xl font-bold text-ink">Reportes</h1>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <h1 className="text-xl font-bold text-ink">Reportes</h1>
+        <div className="flex gap-2">
+          <a
+            href="/api/reportes"
+            download
+            className="flex items-center gap-1.5 rounded-md bg-verde px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition"
+          >
+            ⬇️ Exportar Excel
+          </a>
+        </div>
+      </div>
 
       {/* Tarjetas resumen */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

@@ -30,6 +30,7 @@ export async function crearEmpresa(formData: FormData) {
   const passwordAdmin = (formData.get("password_admin") as string) ?? "";
   const precioMensual = Number(formData.get("precio_mensual") || 0);
   const tipoNegocio = (formData.get("tipo_negocio") as string) || "tienda";
+  const buscadorProductos = (formData.get("buscador_productos") as string) || "openfoodfacts";
 
   if (!nombre || !correoAdmin || !nombreAdmin || passwordAdmin.length < 6) {
     return;
@@ -44,6 +45,7 @@ export async function crearEmpresa(formData: FormData) {
       name: nombre,
       precio_mensual: Number.isFinite(precioMensual) ? precioMensual : 0,
       tipo_negocio: tipoNegocio,
+      buscador_productos: buscadorProductos,
     })
     .select("id")
     .single();

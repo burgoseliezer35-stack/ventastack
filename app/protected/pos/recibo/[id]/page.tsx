@@ -15,10 +15,9 @@ export default async function ReciboPage({
 
   const userId = data.claims.sub as string;
 
-  // Traemos los datos del pedido incluyendo quién lo creó
   const { data: pedido } = await supabase
     .from("pedidos")
-    .select("id, total, metodo_pago, created_at, created_by, clientes(nombre), companies(name, logo_url, rfc, razon_social, calle, colonia, ciudad, estado_empresa, codigo_postal, telefono, iva_porcentaje, iva_incluido, ieps_habilitado, ieps_porcentaje)")
+    .select("id, total, metodo_pago, created_at, vendedor_id, clientes(nombre), companies(name, logo_url, rfc, razon_social, calle, colonia, ciudad, estado_empresa, codigo_postal, telefono, iva_porcentaje, iva_incluido, ieps_habilitado, ieps_porcentaje)")
     .eq("id", id)
     .single();
 
@@ -29,11 +28,11 @@ export default async function ReciboPage({
     .select("cantidad, precio_unitario, subtotal, productos(nombre)")
     .eq("pedido_id", id);
 
-  // Nombre de quien atendió
+  // Nombre de quien atendió — vendedor_id o el usuario actual
   const { data: vendedorPerfil } = await supabase
     .from("profiles")
     .select("full_name")
-    .eq("id", pedido.created_by ?? userId)
+    .eq("id", pedido.vendedor_id ?? userId)
     .single();
 
   const normalizar = <T,>(v: T | T[] | null | undefined): T | null =>
@@ -55,6 +54,11 @@ export default async function ReciboPage({
     subtotal: d.subtotal,
   }));
 
+  const direccion = [
+    empresa?.calle, empresa?.colonia, empresa?.ciudad,
+    empresa?.estado_empresa, empresa?.codigo_postal,
+  ].filter(Boolean).join(", ");
+
   return (
     <Recibo
       pedidoId={pedido.id}
@@ -62,8 +66,7 @@ export default async function ReciboPage({
       logoUrl={empresa?.logo_url ?? null}
       razonSocial={empresa?.razon_social ?? null}
       rfc={empresa?.rfc ?? null}
-      direccion={[empresa?.calle, empresa?.colonia, empresa?.ciudad, empresa?.estado_empresa, empresa?.codigo_postal]
-        .filter(Boolean).join(", ")}
+      direccion={direccion}
       telefono={empresa?.telefono ?? null}
       cliente={cliente?.nombre ?? "Público general"}
       metodoPago={pedido.metodo_pago}

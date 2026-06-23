@@ -13,6 +13,24 @@ export default function NuevaEmpresaPage() {
         className="flex flex-col gap-4 rounded-lg border border-linea bg-white p-6"
       >
         <div>
+          <label htmlFor="buscador_productos" className="block text-sm font-medium text-ink">
+            Buscador de productos (por código de barras)
+          </label>
+          <select
+            id="buscador_productos"
+            name="buscador_productos"
+            className="mt-1 w-full rounded-md border border-linea px-3 py-2 text-ink focus:border-primario focus:outline-none"
+          >
+            <option value="openfoodfacts">🥫 Open Food Facts — abarrotes, alimentos, bebidas</option>
+            <option value="upcitemdb">📦 UPCitemdb — electrónicos, cables, productos en general</option>
+            <option value="ambos">🔍 Ambos — busca primero en Food Facts, luego en UPCitemdb</option>
+          </select>
+          <p className="mt-1 text-xs text-ink/50">
+            Define qué base de datos se consulta al escanear un código de barras en el catálogo.
+          </p>
+        </div>
+
+        <div>
           <label htmlFor="tipo_negocio" className="block text-sm font-medium text-ink">
             Tipo de negocio
           </label>

@@ -1,7 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { actualizarPrecio, cambiarEstado, registrarPago, borrarEmpresa, actualizarTipoNegocio } from "./actions";
+import { actualizarPrecio, cambiarEstado, registrarPago, borrarEmpresa, actualizarTipoNegocio, guardarBuscadores } from "./actions";
+import { ConfiguradorBuscadores } from "@/components/configurador-buscadores";
 
 export default async function EmpresaDetallePage({
   params,
@@ -13,7 +14,7 @@ export default async function EmpresaDetallePage({
 
   const { data: empresa } = await supabase
     .from("companies")
-    .select("id, name, created_at, precio_mensual, activa, tipo_negocio")
+    .select("id, name, created_at, precio_mensual, activa, tipo_negocio, buscador_productos, buscadores_config")
     .eq("id", id)
     .single();
 
@@ -144,13 +145,39 @@ export default async function EmpresaDetallePage({
           <option value="restaurante">🍽️ Restaurante / Cafetería</option>
           <option value="taller">🔧 Taller / Servicio técnico</option>
         </select>
+
+        <label className="text-sm font-medium text-ink">Buscador de productos</label>
+        <select
+          name="buscador_productos"
+          defaultValue={empresa.buscador_productos ?? "openfoodfacts"}
+          className="w-full rounded-md border border-linea px-3 py-2 text-sm text-ink focus:border-primario focus:outline-none"
+        >
+          <option value="openfoodfacts">🥫 Open Food Facts — abarrotes / alimentos</option>
+          <option value="upcitemdb">📦 UPCitemdb — electrónicos / productos en general</option>
+          <option value="ambos">🔍 Ambos — Food Facts primero, UPCitemdb como fallback</option>
+        </select>
         <button
           type="submit"
           className="rounded-md bg-primario px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
         >
-          Guardar tipo
+          Guardar
         </button>
       </form>
+
+      {/* Buscadores de productos */}
+      <div className="flex flex-col gap-3 rounded-lg border border-linea bg-white p-4">
+        <div>
+          <p className="text-sm font-semibold text-ink">Buscadores de productos</p>
+          <p className="text-xs text-ink/50 mt-0.5">
+            Define qué APIs se usan al escanear un código de barras en el catálogo de esta empresa.
+          </p>
+        </div>
+        <ConfiguradorBuscadores
+          companyId={empresa.id}
+          configActual={empresa.buscadores_config as Parameters<typeof ConfiguradorBuscadores>[0]["configActual"]}
+          onGuardar={guardarBuscadores}
+        />
+      </div>
 
       {/* Zona de peligro — borrar empresa */}
       <div className="rounded-lg border border-red-200 bg-red-50 p-4 flex flex-col gap-3">

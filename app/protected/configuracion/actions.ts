@@ -39,6 +39,17 @@ export async function guardarConfiguracion(
       iva_incluido: bool("iva_incluido"),
       ieps_habilitado: formData.get("ieps_habilitado") === "true",
       ieps_porcentaje: num("ieps_porcentaje"),
+      // CFDI
+      cfdi_habilitado: formData.get("cfdi_habilitado") === "true",
+      regimen_fiscal: str("regimen_fiscal"),
+      cp_fiscal: str("cp_fiscal"),
+      pac_nombre: str("pac_nombre"),
+      pac_usuario: str("pac_usuario"),
+      pac_password: str("pac_password"),
+      pac_modo: (formData.get("pac_modo") as string) || "sandbox",
+      csd_cer: str("csd_cer"),
+      csd_key: str("csd_key"),
+      csd_password: str("csd_password"),
     })
     .eq("id", companyId);
 

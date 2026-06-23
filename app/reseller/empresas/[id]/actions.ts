@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 export async function actualizarPrecio(companyId: string, formData: FormData) {
   const supabase = await createClient();
@@ -77,11 +78,28 @@ export async function borrarEmpresa(companyId: string) {
   }
 
   revalidatePath("/reseller");
+  redirect("/reseller");
 }
 
 export async function actualizarTipoNegocio(companyId: string, formData: FormData) {
   const supabase = await createClient();
   const tipoNegocio = formData.get("tipo_negocio") as string;
-  await supabase.from("companies").update({ tipo_negocio: tipoNegocio }).eq("id", companyId);
+  const buscadorProductos = formData.get("buscador_productos") as string;
+  await supabase.from("companies").update({
+    tipo_negocio: tipoNegocio,
+    buscador_productos: buscadorProductos || undefined,
+  }).eq("id", companyId);
+  revalidatePath(`/reseller/empresas/${companyId}`);
+}
+
+export async function guardarBuscadores(
+  companyId: string,
+  config: Record<string, { activo: boolean; api_key: string | null }>
+) {
+  const supabase = await createClient();
+  await supabase
+    .from("companies")
+    .update({ buscadores_config: config })
+    .eq("id", companyId);
   revalidatePath(`/reseller/empresas/${companyId}`);
 }

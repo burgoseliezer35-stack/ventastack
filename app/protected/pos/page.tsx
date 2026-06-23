@@ -57,6 +57,7 @@ export default async function PosPage() {
           geminiDisponible={geminiDisponible()}
           ivaPorcentaje={empresa?.iva_porcentaje ?? 0}
           ivaIncluido={empresa?.iva_incluido ?? true}
+          companyId={miPerfil?.company_id ?? ""}
         />
       ) : (
         <p className="max-w-sm text-sm text-ink/60">
