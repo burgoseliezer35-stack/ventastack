@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Pencil, Layers, History, PlusCircle, PowerOff, Power } from "lucide-react";
+import { Pencil, Layers, History, PlusCircle, PowerOff, Power, TrendingUp } from "lucide-react";
 
 type Producto = {
   id: string;
@@ -150,6 +150,13 @@ export function TablaCatalogo({
                           className="hover:text-primario"
                         >
                           <History size={16} />
+                        </Link>
+                        <Link
+                          href={`/protected/productos/${p.id}/historial-precios`}
+                          title="Historial de precios"
+                          className="hover:text-primario"
+                        >
+                          <TrendingUp size={16} />
                         </Link>
                         {p.activo ? (
                           <form action={desactivarProducto.bind(null, p.id)}>

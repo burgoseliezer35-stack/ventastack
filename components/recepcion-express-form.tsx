@@ -3,7 +3,8 @@
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useState, type KeyboardEvent } from "react";
-import { ScanLine, Plus, Trash2, Check } from "lucide-react";
+import { ScanLine, Plus, Trash2, Check, Camera } from "lucide-react";
+import { EscanerCamara } from "@/components/escaner-camara";
 
 type Proveedor = { id: string; nombre: string };
 type LineaRecepcion = {
@@ -30,6 +31,7 @@ export function RecepcionExpressForm({
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [guardado, setGuardado] = useState(false);
+  const [camaraAbierta, setCamaraAbierta] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
@@ -125,6 +127,27 @@ export function RecepcionExpressForm({
 
   return (
     <div className="flex flex-col gap-4">
+      {camaraAbierta && (
+        <EscanerCamara
+          onEscaneo={async (codigo) => {
+            setCodigoBarras(codigo);
+            const { data } = await supabase
+              .from("productos")
+              .select("id, nombre, codigo_barras, costo")
+              .eq("codigo_barras", codigo)
+              .single();
+            if (data) {
+              agregarProducto(data);
+              setCamaraAbierta(false);
+            } else {
+              setError(`Sin producto registrado para "${codigo}" — agrégalo primero al catálogo`);
+              setCamaraAbierta(false);
+            }
+          }}
+          onCerrar={() => setCamaraAbierta(false)}
+        />
+      )}
+
       {/* Buscadores */}
       <div className="flex flex-col gap-3 rounded-xl border border-linea bg-white p-4 shadow-sm sm:flex-row">
         {/* Por código de barras */}
@@ -132,16 +155,26 @@ export function RecepcionExpressForm({
           <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-ink/50">
             Código de barras
           </label>
-          <div className="flex items-center gap-2 rounded-md border border-linea px-3 focus-within:border-primario">
-            <ScanLine size={16} className="shrink-0 text-ink/40" />
-            <input
-              type="text"
-              value={codigoBarras}
-              onChange={(e) => setCodigoBarras(e.target.value)}
-              onKeyDown={buscarPorCodigo}
-              placeholder="Escanea o escribe y presiona Enter"
-              className="w-full py-2 text-sm text-ink outline-none"
-            />
+          <div className="flex gap-2">
+            <div className="flex flex-1 items-center gap-2 rounded-md border border-linea px-3 focus-within:border-primario">
+              <ScanLine size={16} className="shrink-0 text-ink/40" />
+              <input
+                type="text"
+                value={codigoBarras}
+                onChange={(e) => setCodigoBarras(e.target.value)}
+                onKeyDown={buscarPorCodigo}
+                placeholder="Escanea o escribe y presiona Enter"
+                className="w-full py-2 text-sm text-ink outline-none"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => setCamaraAbierta(true)}
+              className="flex items-center justify-center rounded-md border border-linea bg-paper px-3 hover:bg-primario-suave hover:border-primario transition-colors"
+              title="Usar cámara"
+            >
+              <Camera size={18} className="text-primario" />
+            </button>
           </div>
         </div>
 

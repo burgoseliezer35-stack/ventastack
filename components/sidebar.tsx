@@ -106,6 +106,12 @@ export function Sidebar({ nombre, rol, esAdmin, esVendedor, nombreEmpresa, tipoN
         etiqueta: "Ver rutas",
         Icono: MapPin,
       });
+      enlaces.push({
+        tipo: "enlace",
+        href: "/protected/almacenes",
+        etiqueta: "Almacenes",
+        Icono: Package,
+      });
     }
 
     enlaces.push({

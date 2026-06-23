@@ -3,7 +3,9 @@
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useState, useRef, type KeyboardEvent } from "react";
-import { Mic, ShoppingCart, Trash2, Lightbulb, ScanLine } from "lucide-react";
+import { Mic, ShoppingCart, Trash2, Lightbulb, ScanLine, Camera } from "lucide-react";
+import { useSpeechRecognition, interpretarPedidoVoz } from "@/lib/speech-recognition";
+import { EscanerCamara } from "@/components/escaner-camara";
 
 type NivelMayoreo = { cantidad_minima: number; precio_unitario: number };
 type Producto = {
@@ -31,18 +33,22 @@ function precioParaCantidad(producto: Producto, cantidad: number): number {
   return nivel ? nivel.precio_unitario : producto.precio;
 }
 
+import { useOfflineMode } from "@/lib/offline-mode";
+
 export function PosForm({
   productos,
   clientes,
   geminiDisponible,
   ivaPorcentaje = 0,
   ivaIncluido = true,
+  companyId = "",
 }: {
   productos: Producto[];
   clientes: Cliente[];
   geminiDisponible: boolean;
   ivaPorcentaje?: number;
   ivaIncluido?: boolean;
+  companyId?: string;
 }) {
   const [carrito, setCarritoRaw] = useState<ItemCarrito[]>(() => {
     // Al montar, intentamos recuperar el carrito de esta sesión —
@@ -85,6 +91,10 @@ export function PosForm({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const fragmentosRef = useRef<Blob[]>([]);
   const router = useRouter();
+  const [camaraAbierta, setCamaraAbierta] = useState(false);
+  const supabase = createClient();
+  const { online, sincronizando, pendientes, guardarOffline } = useOfflineMode(companyId);
+  const { disponible: vozOfflineDisponible, estado: estadoVoz, error: errorVoz, escuchar } = useSpeechRecognition();
 
   const agregarProductoAlCarrito = (
     producto: Producto,
@@ -392,7 +402,31 @@ export function PosForm({
     }
 
     setIsLoading(true);
-    const supabase = createClient();
+
+    // Sin internet — guardar en cola local y continuar
+    if (!online) {
+      try {
+        await guardarOffline(
+          carrito.map((i) => ({
+            producto_id: i.producto_id,
+            nombre: i.nombre,
+            cantidad: i.cantidad,
+            precio_unitario: i.precio_unitario,
+          })),
+          clienteId || null,
+          metodoPago,
+          total
+        );
+        setIsLoading(false);
+        setCarrito([]);
+        try { sessionStorage.removeItem("ventastack_carrito"); } catch { /* ok */ }
+        setAviso(`Venta guardada sin internet ($${total.toLocaleString("en-US", { minimumFractionDigits: 2 })}). Se registrará cuando vuelva la conexión.`);
+      } catch {
+        setIsLoading(false);
+        setError("No se pudo guardar la venta offline. Intenta de nuevo.");
+      }
+      return;
+    }
 
     const { data: pedidoId, error: rpcError } = await supabase.rpc(
       "crear_pedido_con_detalle",
@@ -411,15 +445,10 @@ export function PosForm({
     setIsLoading(false);
 
     if (rpcError) {
-      // Si fue por falta de stock, la base de datos ya manda el
-      // mensaje exacto de qué producto y cuánto queda — lo
-      // mostramos tal cual.
       setError(rpcError.message);
       return;
     }
 
-    // Aviso de cortesía, sin bloquear nada — si esto tarda o falla,
-    // la venta ya se hizo bien y el recibo se muestra igual.
     fetch("/api/verificar-stock-bajo", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -432,23 +461,63 @@ export function PosForm({
 
   return (
     <div className="flex w-full max-w-5xl flex-col gap-4">
+      {/* Banner de estado de conexión */}
+      {!online && (
+        <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-300 px-4 py-2.5">
+          <span className="text-amber-600 font-medium text-sm">📵 Sin internet</span>
+          <span className="text-amber-700 text-xs">— Las ventas se guardan y se sincronizan cuando vuelva la conexión.</span>
+        </div>
+      )}
+      {online && pendientes > 0 && (
+        <div className="flex items-center justify-between rounded-lg bg-primario-suave border border-primario/30 px-4 py-2.5">
+          <span className="text-primario text-sm font-medium">
+            {sincronizando ? "⏳ Sincronizando ventas offline..." : `✓ Conexión restaurada — ${pendientes} venta${pendientes > 1 ? "s" : ""} pendiente${pendientes > 1 ? "s" : ""} de sincronizar`}
+          </span>
+        </div>
+      )}
+      {camaraAbierta && (
+        <EscanerCamara
+          onEscaneo={(codigo) => {
+            const producto = productos.find((p) => p.codigo_barras === codigo);
+            if (producto) {
+              setProductoSeleccionado(producto.id);
+              if (producto.stock > 0) agregarProductoAlCarrito(producto);
+              else setError(`"${producto.nombre}" sin stock — recíbelo primero`);
+            } else {
+              setError(`Sin producto registrado para "${codigo}"`);
+            }
+            setCamaraAbierta(false);
+          }}
+          onCerrar={() => setCamaraAbierta(false)}
+        />
+      )}
       {/* Barra superior: código de barras, selector de producto, voz */}
       <div className="flex flex-col gap-3 rounded-xl border border-linea bg-white p-4 shadow-sm sm:flex-row sm:items-end">
         <div className="flex-1">
           <label htmlFor="codigoBarras" className="mb-1 block text-xs font-medium uppercase tracking-wide text-ink/50">
             Código de barras
           </label>
-          <div className="flex items-center gap-2 rounded-md border border-linea px-3 focus-within:border-primario">
-            <ScanLine size={16} className="text-ink/40" />
-            <input
-              id="codigoBarras"
-              type="text"
-              value={codigoBarras}
-              onChange={(e) => setCodigoBarras(e.target.value)}
-              onKeyDown={buscarPorCodigoBarras}
-              placeholder="Escanea o escribe y presiona Enter"
-              className="w-full py-2 text-sm text-ink outline-none"
-            />
+          <div className="flex gap-2">
+            <div className="flex flex-1 items-center gap-2 rounded-md border border-linea px-3 focus-within:border-primario">
+              <ScanLine size={16} className="text-ink/40" />
+              <input
+                id="codigoBarras"
+                type="text"
+                value={codigoBarras}
+                onChange={(e) => setCodigoBarras(e.target.value)}
+                onKeyDown={buscarPorCodigoBarras}
+                placeholder="Escanea o escribe y presiona Enter"
+                className="w-full py-2 text-sm text-ink outline-none"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => setCamaraAbierta(true)}
+              className="flex items-center justify-center rounded-md border border-linea bg-paper px-3 hover:bg-primario-suave hover:border-primario transition-colors"
+              title="Usar cámara del celular"
+            >
+              <Camera size={18} className="text-primario" />
+            </button>
           </div>
         </div>
 
@@ -513,31 +582,61 @@ export function PosForm({
           </button>
         </div>
 
-        {geminiDisponible && (
+        {/* Botón de voz — offline primero, Gemini como fallback */}
+        {(vozOfflineDisponible || geminiDisponible) && (
           <button
             type="button"
             onPointerDown={(e) => {
               e.currentTarget.setPointerCapture(e.pointerId);
-              iniciarGrabacion();
+              if (vozOfflineDisponible) {
+                setError(null);
+                setAviso(null);
+                escuchar().then((resultado) => {
+                  if (!resultado) return;
+                  const items = interpretarPedidoVoz(resultado.texto, productos);
+                  if (items.length === 0) {
+                    setError(`No entendí ningún producto en: "${resultado.texto}"`);
+                    return;
+                  }
+                  const agregados: string[] = [];
+                  for (const item of items) {
+                    const producto = productos.find((p) => p.id === item.productoId);
+                    if (producto) {
+                      agregarProductoAlCarrito(producto, item.cantidad);
+                      agregados.push(`${item.cantidad}× ${producto.nombre}`);
+                    }
+                  }
+                  setAviso(`Agregado: ${agregados.join(", ")}`);
+                });
+              } else {
+                iniciarGrabacion();
+              }
             }}
-            onPointerUp={detenerGrabacion}
-            onPointerLeave={detenerGrabacion}
-            disabled={procesandoVoz}
+            onPointerUp={() => {
+              if (!vozOfflineDisponible) detenerGrabacion();
+            }}
+            onPointerLeave={() => {
+              if (!vozOfflineDisponible) detenerGrabacion();
+            }}
+            disabled={procesandoVoz || estadoVoz === "procesando"}
             className={`flex items-center justify-center gap-2 rounded-md px-4 py-3 text-sm font-medium text-white transition select-none disabled:opacity-50 ${
-              grabando
+              estadoVoz === "escuchando" || grabando
                 ? "bg-red-600 scale-95"
                 : "bg-primario hover:opacity-90 active:scale-95"
             }`}
             style={{ touchAction: "none" }}
           >
             <Mic size={15} />
-            {procesandoVoz
-              ? "Entendiendo..."
-              : grabando
-              ? "🔴 Grabando..."
+            {procesandoVoz || estadoVoz === "procesando"
+              ? "Procesando..."
+              : estadoVoz === "escuchando" || grabando
+              ? "🔴 Escuchando..."
+              : vozOfflineDisponible
+              ? "Hablar pedido"
               : "Mantén para hablar"}
           </button>
         )}
+        {errorVoz && <p className="text-xs text-red-500 mt-1">{errorVoz}</p>}
       </div>
 
       {aviso && (
