@@ -35,6 +35,7 @@ type Props = {
   esVendedor: boolean;
   nombreEmpresa?: string;
   tipoNegocio?: string;
+  tiposNegocio?: string[];
 };
 
 type SubEnlace = { href: string; etiqueta: string };
@@ -42,7 +43,7 @@ type ItemNav =
   | { tipo: "enlace"; href: string; etiqueta: string; Icono: LucideIcon }
   | { tipo: "grupo"; etiqueta: string; Icono: LucideIcon; items: SubEnlace[] };
 
-export function Sidebar({ nombre, rol, esAdmin, esVendedor, nombreEmpresa, tipoNegocio = "tienda" }: Props) {
+export function Sidebar({ nombre, rol, esAdmin, esVendedor, nombreEmpresa, tipoNegocio = "tienda", tiposNegocio = [] }: Props) {
   const [abierto, setAbierto] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
@@ -99,7 +100,8 @@ export function Sidebar({ nombre, rol, esAdmin, esVendedor, nombreEmpresa, tipoN
     });
 
     // Mapa de rutas solo para distribuidores
-    if (tipoNegocio === "distribuidor") {
+    const esDistribuidor = tiposNegocio.includes("distribuidor") || tipoNegocio === "distribuidor";
+    if (esDistribuidor) {
       enlaces.push({
         tipo: "enlace",
         href: "/protected/rutas",
