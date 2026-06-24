@@ -1,6 +1,8 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { revalidatePath } from "next/cache";
 
 export async function guardarConfiguracion(
   companyId: string,
@@ -63,11 +65,32 @@ export async function guardarConfiguracion(
     };
   }
 
-  const { error } = await supabase
+  // Verificar que el usuario es admin de esta empresa
+  const { data: claims } = await supabase.auth.getClaims();
+  if (!claims?.claims?.sub) return { ok: false, error: "No autenticado" };
+
+  const { data: perfil } = await supabase
+    .from("profiles")
+    .select("company_id, role, es_superadmin")
+    .eq("id", claims.claims.sub)
+    .single();
+
+  const esAdminDeEmpresa = perfil?.company_id === companyId && perfil?.role === "admin";
+  const esSuperadmin = perfil?.es_superadmin === true;
+
+  if (!esAdminDeEmpresa && !esSuperadmin) {
+    return { ok: false, error: "Sin permisos para editar esta empresa" };
+  }
+
+  // Usar admin client para saltarse RLS en companies
+  const admin = createAdminClient();
+  const { error } = await admin
     .from("companies")
     .update(campos)
     .eq("id", companyId);
 
   if (error) return { ok: false, error: error.message };
+  revalidatePath("/protected");
+  revalidatePath("/protected/configuracion");
   return { ok: true };
 }
