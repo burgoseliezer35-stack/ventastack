@@ -15,6 +15,7 @@ export async function actualizarProducto(
   const activo = formData.get("activo") === "on";
   const categoriaId = (formData.get("categoria_id") as string) || null;
   const codigoBarras = (formData.get("codigo_barras") as string)?.trim() || null;
+  const imagenUrl = (formData.get("imagen_url") as string)?.trim() || null;
 
   if (!nombre || !Number.isFinite(precio) || precio <= 0) {
     return;
@@ -22,7 +23,7 @@ export async function actualizarProducto(
 
   const { error } = await supabase
     .from("productos")
-    .update({ nombre, precio, activo, categoria_id: categoriaId, codigo_barras: codigoBarras })
+    .update({ nombre, precio, activo, categoria_id: categoriaId, codigo_barras: codigoBarras, imagen_url: imagenUrl })
     .eq("id", productoId);
 
   if (error) {
