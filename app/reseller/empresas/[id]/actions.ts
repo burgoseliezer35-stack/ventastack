@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -59,26 +60,43 @@ export async function registrarPago(companyId: string, formData: FormData) {
   revalidatePath("/reseller");
 }
 
-export async function borrarEmpresa(companyId: string) {
-  const supabase = await createClient();
+export async function borrarEmpresa(companyId: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    // Usamos admin client para saltarnos RLS — solo superadmin llega aquí
+    const admin = createAdminClient();
 
-  // Solo borramos si no tiene pedidos — para no perder historial
-  // de un negocio que ya operó de verdad.
-  const { count } = await supabase
-    .from("pedidos")
-    .select("id", { count: "exact", head: true })
-    .eq("company_id", companyId);
+    // Verificamos con cliente normal que el que llama sea superadmin
+    const supabase = await createClient();
+    const { data: claims } = await supabase.auth.getClaims();
+    if (!claims?.claims?.sub) return { ok: false, error: "No autenticado" };
 
-  if (count && count > 0) {
-    // Tiene historial — solo desactivamos, no borramos
-    await supabase.from("companies").update({ activa: false }).eq("id", companyId);
-  } else {
-    // Sin historial (cuenta de prueba) — borramos directo
-    await supabase.from("companies").delete().eq("id", companyId);
+    const { data: perfil } = await supabase
+      .from("profiles")
+      .select("es_superadmin")
+      .eq("id", claims.claims.sub)
+      .single();
+    if (!perfil?.es_superadmin) return { ok: false, error: "Sin permisos" };
+
+    // Solo borramos si no tiene pedidos
+    const { count } = await admin
+      .from("pedidos")
+      .select("id", { count: "exact", head: true })
+      .eq("company_id", companyId);
+
+    if (count && count > 0) {
+      // Tiene historial — solo desactivamos
+      await admin.from("companies").update({ activa: false }).eq("id", companyId);
+    } else {
+      // Sin historial — borramos permanentemente
+      await admin.from("companies").delete().eq("id", companyId);
+    }
+
+    revalidatePath("/reseller");
+    return { ok: true };
+  } catch (e) {
+    console.error("borrarEmpresa error:", e);
+    return { ok: false, error: "Error inesperado" };
   }
-
-  revalidatePath("/reseller");
-  redirect("/reseller");
 }
 
 export async function actualizarTipoNegocio(companyId: string, formData: FormData) {
