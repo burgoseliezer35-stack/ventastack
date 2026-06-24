@@ -153,20 +153,46 @@ export function Recibo({
     </>
   );
 
+  // Genera el HTML del ticket como string para abrirlo en ventana limpia
+  // Necesario para iOS Safari que no soporta @media print con body > * { display: none }
+  const imprimirTicket = () => {
+    const ticketEl = document.getElementById("ticket-screen");
+    if (!ticketEl) { window.print(); return; }
+
+    const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Recibo ${folio}</title>
+  <style>
+    @page { size: ${ancho}mm auto; margin: 2mm; }
+    body { font-family: monospace; font-size: 11px; margin: 0; padding: 2mm; }
+    img { max-width: 100%; }
+  </style>
+</head>
+<body>
+${ticketEl.innerHTML}
+</body>
+</html>`;
+
+    const ventana = window.open("", "_blank", "width=400,height=600");
+    if (!ventana) { window.print(); return; }
+    ventana.document.write(html);
+    ventana.document.close();
+    // Esperar a que carguen las imágenes antes de imprimir
+    ventana.onload = () => {
+      setTimeout(() => {
+        ventana.focus();
+        ventana.print();
+      }, 300);
+    };
+  };
+
   return (
     <>
-      <style>{`
-        @media print {
-          @page { size: ${ancho}mm auto; margin: 2mm; }
-          body > * { display: none !important; }
-          #ticket-print { display: block !important; }
-        }
-        #ticket-print { display: none; }
-        @media print { #ticket-print { display: block; } }
-      `}</style>
-
       {/* Vista en pantalla */}
-      <div className="flex min-h-screen flex-col items-center gap-4 bg-paper px-4 py-8 print:hidden">
+      <div className="flex min-h-screen flex-col items-center gap-4 bg-paper px-4 py-8">
         <div className="flex items-center gap-3 rounded-lg border border-linea bg-white px-4 py-2 shadow-sm">
           <span className="text-xs text-ink/60">Ancho de papel:</span>
           {ANCHOS.map((a) => (
@@ -179,25 +205,24 @@ export function Recibo({
           ))}
         </div>
 
-        <div style={{ width: anchoPx, fontFamily: "monospace", fontSize: 11 }}
-          className="rounded-lg border border-linea bg-white p-3 shadow-sm">
+        {/* El ticket visible en pantalla — también se usa para copiar el HTML al imprimir */}
+        <div
+          id="ticket-screen"
+          style={{ width: anchoPx, fontFamily: "monospace", fontSize: 11 }}
+          className="rounded-lg border border-linea bg-white p-3 shadow-sm"
+        >
           {ticketJsx}
         </div>
 
         <div className="flex w-full flex-col gap-2" style={{ maxWidth: anchoPx }}>
-          <button type="button" onClick={() => window.print()}
+          <button type="button" onClick={imprimirTicket}
             className="w-full rounded-md bg-primario px-4 py-2 text-sm font-medium text-white transition hover:opacity-90">
-            Imprimir / Guardar PDF
+            🖨️ Imprimir / Guardar PDF
           </button>
           <Link href="/protected/pos" className="text-center text-sm text-primario hover:underline">
             Nueva venta →
           </Link>
         </div>
-      </div>
-
-      {/* Solo para impresión */}
-      <div id="ticket-print" style={{ fontFamily: "monospace", fontSize: 11, padding: "2mm" }}>
-        {ticketJsx}
       </div>
     </>
   );
