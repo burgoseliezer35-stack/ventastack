@@ -1,5 +1,7 @@
 "use client";
 
+import { imgUrl } from "@/lib/img-proxy";
+
 import { useState } from "react";
 import Link from "next/link";
 import { Pencil, Layers, History, PlusCircle, PowerOff, Power, TrendingUp } from "lucide-react";
@@ -85,7 +87,7 @@ export function TablaCatalogo({
                         {p.imagen_url ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
-                            src={p.imagen_url}
+                            src={imgUrl(p.imagen_url) ?? ""}
                             alt={p.nombre}
                             className="h-9 w-9 rounded-md object-contain border border-linea bg-white shrink-0"
                           />

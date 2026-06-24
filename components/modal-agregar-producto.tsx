@@ -1,5 +1,7 @@
 "use client";
 
+import { imgUrl } from "@/lib/img-proxy";
+
 import { useState, useRef, useEffect } from "react";
 import { Plus, X, Loader2, CheckCircle, Camera, ImageOff } from "lucide-react";
 
@@ -61,18 +63,35 @@ export function ModalAgregarProducto({
     }, 600);
   }, [codigo]);
 
-  // Convierte la foto del celular a base64 y la usa como imagen del producto
-  const manejarFotoManual = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Comprime la imagen a máx 400px y calidad 70% antes de guardar como base64
+  // Evita que fotos de celular (~3-5MB) rompan la fila de Postgres
+  const comprimirImagen = (archivo: File): Promise<string> =>
+    new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const img = new window.Image();
+        img.onload = () => {
+          const MAX = 400;
+          const escala = Math.min(1, MAX / Math.max(img.width, img.height));
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.round(img.width * escala);
+          canvas.height = Math.round(img.height * escala);
+          const ctx = canvas.getContext("2d")!;
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL("image/jpeg", 0.7));
+        };
+        img.src = reader.result as string;
+      };
+      reader.readAsDataURL(archivo);
+    });
+
+  // Convierte la foto del celular a base64 comprimido y la usa como imagen del producto
+  const manejarFotoManual = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const archivo = e.target.files?.[0];
     if (!archivo) return;
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const url = reader.result as string;
-      setImagenManual(url);
-      if (imagenUrlRef.current) imagenUrlRef.current.value = url;
-    };
-    reader.readAsDataURL(archivo);
+    const url = await comprimirImagen(archivo);
+    setImagenManual(url);
+    if (imagenUrlRef.current) imagenUrlRef.current.value = url;
   };
 
   const cerrar = () => {
@@ -142,7 +161,7 @@ export function ModalAgregarProducto({
                   <div className="flex items-center gap-4 rounded-2xl bg-gradient-to-r from-primario-suave to-white border border-primario/20 p-4">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={imagenActual}
+                      src={imgUrl(imagenActual) ?? ""}
                       alt="Vista previa"
                       className="h-20 w-20 rounded-xl object-contain bg-white border border-linea shadow-sm shrink-0"
                     />

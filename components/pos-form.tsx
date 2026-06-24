@@ -1,5 +1,7 @@
 "use client";
 
+import { imgUrl } from "@/lib/img-proxy";
+
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useState, useRef, type KeyboardEvent } from "react";
@@ -561,7 +563,7 @@ export function PosForm({
                 <div className="h-16 w-16 rounded-xl border border-linea bg-paper overflow-hidden flex items-center justify-center shadow-inner">
                   {p.imagen_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={p.imagen_url} alt={p.nombre} className="h-full w-full object-contain" />
+                    <img src={imgUrl(p.imagen_url) ?? ""} alt={p.nombre} className="h-full w-full object-contain" />
                   ) : (
                     <span className="text-3xl">📦</span>
                   )}
