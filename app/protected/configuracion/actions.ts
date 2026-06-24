@@ -1,13 +1,12 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
 
 export async function guardarConfiguracion(
   companyId: string,
   tab: string,
   formData: FormData,
-) {
+): Promise<{ ok: boolean; error?: string }> {
   const supabase = await createClient();
 
   const str = (k: string) => (formData.get(k) as string)?.trim() || null;
@@ -16,7 +15,6 @@ export async function guardarConfiguracion(
     return Number.isFinite(v) ? v : 0;
   };
 
-  // Cada pestaña solo guarda sus propios campos — así no pisa los demás
   let campos: Record<string, unknown> = {};
 
   if (tab === "negocio") {
@@ -70,9 +68,6 @@ export async function guardarConfiguracion(
     .update(campos)
     .eq("id", companyId);
 
-  if (error) {
-    redirect(`/protected/configuracion?error=${encodeURIComponent(error.message)}`);
-  }
-
-  redirect(`/protected/configuracion?guardado=1`);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
 }
