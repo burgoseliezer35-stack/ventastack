@@ -1,0 +1,90 @@
+"use client";
+
+import { useState, useRef, useEffect } from "react";
+import { Camera } from "lucide-react";
+
+export function LogoUpload({ logoActual }: { logoActual: string | null }) {
+  const [preview, setPreview] = useState<string | null>(logoActual);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const hiddenRef = useRef<HTMLInputElement>(null);
+
+  // Sincroniza el input hidden con el valor actual
+  useEffect(() => {
+    if (hiddenRef.current) {
+      hiddenRef.current.value = preview ?? "";
+    }
+  }, [preview]);
+
+  const comprimirImagen = (archivo: File): Promise<string> =>
+    new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const img = new window.Image();
+        img.onload = () => {
+          const MAX = 400;
+          const escala = Math.min(1, MAX / Math.max(img.width, img.height));
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.round(img.width * escala);
+          canvas.height = Math.round(img.height * escala);
+          const ctx = canvas.getContext("2d")!;
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL("image/jpeg", 0.7));
+        };
+        img.src = reader.result as string;
+      };
+      reader.readAsDataURL(archivo);
+    });
+
+  const manejarArchivo = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const archivo = e.target.files?.[0];
+    if (!archivo) return;
+    const url = await comprimirImagen(archivo);
+    setPreview(url);
+  };
+
+  return (
+    <div className="flex items-center gap-4">
+      <button type="button" onClick={() => fileRef.current?.click()}
+        className="relative group shrink-0">
+        {preview ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={preview} alt="Logo"
+            className="h-20 w-20 rounded-xl object-contain border border-linea bg-paper" />
+        ) : (
+          <div className="h-20 w-20 rounded-xl border-2 border-dashed border-linea bg-paper flex items-center justify-center text-3xl">
+            🏪
+          </div>
+        )}
+        <div className="absolute inset-0 rounded-xl bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+          <Camera size={20} className="text-white" />
+        </div>
+      </button>
+
+      <div className="flex-1">
+        <p className="text-sm font-medium text-ink">Logo del negocio</p>
+        <p className="text-xs text-ink/50 mt-0.5">
+          Toca la imagen para cambiarla. JPG, PNG o cualquier formato.
+          Aparece en el ticket de venta.
+        </p>
+        <button type="button" onClick={() => fileRef.current?.click()}
+          className="mt-2 text-xs font-medium text-primario hover:underline">
+          {preview ? "Cambiar logo" : "Subir logo"}
+        </button>
+        {preview && (
+          <button type="button" onClick={() => setPreview(null)}
+            className="ml-3 mt-2 text-xs text-ink/40 hover:text-red-600">
+            Quitar
+          </button>
+        )}
+      </div>
+
+      {/* Input de archivo oculto */}
+      <input ref={fileRef} type="file" accept="image/*"
+        className="hidden" onChange={manejarArchivo} />
+
+      {/* Input hidden que envía el valor al server action */}
+      <input ref={hiddenRef} name="logo_url" type="hidden"
+        defaultValue={logoActual ?? ""} />
+    </div>
+  );
+}
