@@ -1,8 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { actualizarPrecio, cambiarEstado, registrarPago, borrarEmpresa, actualizarTipoNegocio, guardarBuscadores } from "./actions";
+import { actualizarPrecio, cambiarEstado, registrarPago, actualizarTipoNegocio, guardarBuscadores } from "./actions";
 import { ConfiguradorBuscadores } from "@/components/configurador-buscadores";
+import { BotonBorrarEmpresa } from "./boton-borrar";
 
 export default async function EmpresaDetallePage({
   params,
@@ -255,19 +256,7 @@ export default async function EmpresaDetallePage({
             Si el negocio tiene historial de ventas, solo se desactivará. Si es una cuenta de prueba sin ventas, se borrará permanentemente.
           </p>
         </div>
-        <form action={borrarEmpresa.bind(null, empresa.id)}>
-          <button
-            type="submit"
-            className="rounded-md border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100"
-            onClick={(e) => {
-              if (!confirm(`¿Seguro que quieres eliminar "${empresa.name}"? Esta acción puede no ser reversible.`)) {
-                e.preventDefault();
-              }
-            }}
-          >
-            Borrar empresa
-          </button>
-        </form>
+        <BotonBorrarEmpresa companyId={empresa.id} nombre={empresa.name} />
       </div>
 
       <Link href="/reseller" className="text-sm text-primario hover:underline">
