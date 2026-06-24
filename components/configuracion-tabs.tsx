@@ -104,12 +104,22 @@ export function ConfiguracionTabs({
     e.preventDefault();
     setGuardando(true);
     setErrorMsg(null);
-    const formData = new FormData(e.currentTarget);
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+
     const resultado = await guardarConfiguracion(empresa.id, tab, formData);
     if (resultado.ok) {
       // Actualizar estado local con los nuevos valores sin recargar
       const nuevos: Record<string, unknown> = {};
-      formData.forEach((val, key) => { nuevos[key] = val || null; });
+      formData.forEach((val, key) => {
+        // FormData omite inputs hidden con valor vacío en algunos browsers — leerlos del DOM
+        nuevos[key] = val || null;
+      });
+      // Leer explícitamente inputs hidden (como logo_url) que FormData puede omitir
+      const hiddens = form.querySelectorAll<HTMLInputElement>("input[type=hidden]");
+      hiddens.forEach((el) => {
+        if (el.name) nuevos[el.name] = el.value || null;
+      });
       setEmpresa((prev) => ({ ...prev, ...nuevos }));
       setEditando(null);
       setExito(tab);

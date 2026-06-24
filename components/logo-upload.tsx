@@ -15,15 +15,31 @@ export function LogoUpload({ logoActual }: { logoActual: string | null }) {
     }
   }, [preview]);
 
-  const manejarArchivo = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const comprimirImagen = (archivo: File): Promise<string> =>
+    new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const img = new window.Image();
+        img.onload = () => {
+          const MAX = 400;
+          const escala = Math.min(1, MAX / Math.max(img.width, img.height));
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.round(img.width * escala);
+          canvas.height = Math.round(img.height * escala);
+          const ctx = canvas.getContext("2d")!;
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL("image/jpeg", 0.7));
+        };
+        img.src = reader.result as string;
+      };
+      reader.readAsDataURL(archivo);
+    });
+
+  const manejarArchivo = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const archivo = e.target.files?.[0];
     if (!archivo) return;
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const url = reader.result as string;
-      setPreview(url);
-    };
-    reader.readAsDataURL(archivo);
+    const url = await comprimirImagen(archivo);
+    setPreview(url);
   };
 
   return (
@@ -63,7 +79,7 @@ export function LogoUpload({ logoActual }: { logoActual: string | null }) {
       </div>
 
       {/* Input de archivo oculto */}
-      <input ref={fileRef} type="file" accept="image/*" capture="environment"
+      <input ref={fileRef} type="file" accept="image/*"
         className="hidden" onChange={manejarArchivo} />
 
       {/* Input hidden que envía el valor al server action */}
