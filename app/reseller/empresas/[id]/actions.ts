@@ -60,12 +60,14 @@ export async function registrarPago(companyId: string, formData: FormData) {
   revalidatePath("/reseller");
 }
 
-export async function borrarEmpresa(companyId: string): Promise<{ ok: boolean; error?: string }> {
+export async function borrarEmpresa(
+  companyId: string,
+  forzar = false
+): Promise<{ ok: boolean; tieneHistorial?: boolean; error?: string }> {
   try {
-    // Usamos admin client para saltarnos RLS — solo superadmin llega aquí
     const admin = createAdminClient();
 
-    // Verificamos con cliente normal que el que llama sea superadmin
+    // Verificar que sea superadmin
     const supabase = await createClient();
     const { data: claims } = await supabase.auth.getClaims();
     if (!claims?.claims?.sub) return { ok: false, error: "No autenticado" };
@@ -77,19 +79,38 @@ export async function borrarEmpresa(companyId: string): Promise<{ ok: boolean; e
       .single();
     if (!perfil?.es_superadmin) return { ok: false, error: "Sin permisos" };
 
-    // Solo borramos si no tiene pedidos
+    // Contar pedidos
     const { count } = await admin
       .from("pedidos")
       .select("id", { count: "exact", head: true })
       .eq("company_id", companyId);
 
-    if (count && count > 0) {
-      // Tiene historial — solo desactivamos
-      await admin.from("companies").update({ activa: false }).eq("id", companyId);
-    } else {
-      // Sin historial — borramos permanentemente
-      await admin.from("companies").delete().eq("id", companyId);
+    const tieneHistorial = (count ?? 0) > 0;
+
+    if (tieneHistorial && !forzar) {
+      // Avisamos al cliente para que confirme borrado forzado
+      return { ok: false, tieneHistorial: true };
     }
+
+    // Borrar en cascada: detalle_pedidos, pedidos, profiles, y finalmente la empresa
+    if (tieneHistorial) {
+      // Borrar detalle_pedidos de esta empresa
+      const { data: pedidos } = await admin
+        .from("pedidos")
+        .select("id")
+        .eq("company_id", companyId);
+      if (pedidos && pedidos.length > 0) {
+        const ids = pedidos.map((p: { id: string }) => p.id);
+        await admin.from("detalle_pedidos").delete().in("pedido_id", ids);
+      }
+      await admin.from("pedidos").delete().eq("company_id", companyId);
+    }
+
+    // Borrar profiles de esta empresa
+    await admin.from("profiles").delete().eq("company_id", companyId);
+
+    // Borrar la empresa
+    await admin.from("companies").delete().eq("id", companyId);
 
     revalidatePath("/reseller");
     return { ok: true };

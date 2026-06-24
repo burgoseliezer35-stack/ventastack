@@ -15,20 +15,36 @@ export function BotonBorrarEmpresa({
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  const handleClick = async () => {
-    if (!confirm(`¿Seguro que quieres eliminar "${nombre}"?\nEsta acción puede no ser reversible.`)) {
-      return;
-    }
+  const ejecutarBorrado = async (forzar: boolean) => {
     setCargando(true);
     setError(null);
-    const resultado = await borrarEmpresa(companyId);
+    const resultado = await borrarEmpresa(companyId, forzar);
+
     if (resultado.ok) {
       router.push("/reseller");
       router.refresh();
-    } else {
-      setError(resultado.error ?? "Error al eliminar");
-      setCargando(false);
+      return;
     }
+
+    if (resultado.tieneHistorial) {
+      // Tiene pedidos — pedir confirmación extra para borrado forzado
+      setCargando(false);
+      const confirmar = confirm(
+        `"${nombre}" tiene historial de ventas.\n\n¿Borrar permanentemente junto con todos sus pedidos y usuarios?\n\nEsta acción NO se puede deshacer.`
+      );
+      if (confirmar) {
+        await ejecutarBorrado(true);
+      }
+      return;
+    }
+
+    setError(resultado.error ?? "Error al eliminar");
+    setCargando(false);
+  };
+
+  const handleClick = async () => {
+    if (!confirm(`¿Eliminar "${nombre}"?`)) return;
+    await ejecutarBorrado(false);
   };
 
   return (
