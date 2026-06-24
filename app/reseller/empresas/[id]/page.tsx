@@ -12,28 +12,50 @@ export default async function EmpresaDetallePage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const { data: empresa } = await supabase
+  const { data: empresa, error: errorEmpresa } = await supabase
     .from("companies")
     .select("id, name, created_at, precio_mensual, activa")
     .eq("id", id)
     .single();
 
-  if (!empresa) {
+  if (errorEmpresa || !empresa) {
     notFound();
   }
 
-  // Intentamos cargar columnas nuevas por separado — si no existen aún, no rompe
-  let empresaExtra: { tipo_negocio?: string | null; buscador_productos?: string | null; buscadores_config?: Record<string, { activo: boolean; api_key: string | null }> | null } | null = null;
+  // Columnas nuevas — cargadas por separado para no romper si faltan migraciones
+  let tipoNegocio: string | null = "tienda";
+  let tiposNegocio: string[] = ["tienda"];
+  let buscadorProductos: string | null = "openfoodfacts";
+  let buscadoresConfig: Record<string, { activo: boolean; api_key: string | null }> | null = null;
+
   try {
-    const { data: _extra } = await supabase
+    const { data: extra } = await supabase
       .from("companies")
       .select("tipo_negocio, buscador_productos, buscadores_config")
       .eq("id", id)
       .single();
-    empresaExtra = _extra;
-  } catch { empresaExtra = null; }
+    if (extra) {
+      tipoNegocio = extra.tipo_negocio ?? "tienda";
+      buscadorProductos = extra.buscador_productos ?? "openfoodfacts";
+      buscadoresConfig = extra.buscadores_config ?? null;
+    }
+  } catch { /* migración no corrida aún */ }
 
-  const empresaCompleta = { ...empresa, ...(empresaExtra ?? {}) };
+  // tipos_negocio — columna de migración 035
+  try {
+    const { data: extra2 } = await supabase
+      .from("companies")
+      .select("tipos_negocio")
+      .eq("id", id)
+      .single();
+    if (extra2 && Array.isArray((extra2 as { tipos_negocio?: string[] }).tipos_negocio)) {
+      tiposNegocio = (extra2 as { tipos_negocio: string[] }).tipos_negocio;
+    } else {
+      tiposNegocio = tipoNegocio ? [tipoNegocio] : ["tienda"];
+    }
+  } catch {
+    tiposNegocio = tipoNegocio ? [tipoNegocio] : ["tienda"];
+  }
 
   let pagos: { id: string; monto: number; nota: string | null; created_at: string }[] = [];
   try {
@@ -42,34 +64,39 @@ export default async function EmpresaDetallePage({
       .select("id, monto, nota, created_at")
       .eq("company_id", id)
       .order("created_at", { ascending: false });
-    pagos = _pagos ?? [];
+    pagos = (_pagos ?? []).map((p) => ({
+      ...p,
+      monto: typeof p.monto === "number" ? p.monto : 0,
+    }));
   } catch { pagos = []; }
+
+  const precioMensual = typeof empresa.precio_mensual === "number" ? empresa.precio_mensual : 0;
 
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-bold text-ink">{empresaCompleta.name}</h1>
+        <h1 className="text-xl font-bold text-ink">{empresa.name}</h1>
         <p className="text-xs text-ink/50">
-          Desde {new Date(empresaCompleta.created_at).toLocaleDateString("es-MX")}
+          Desde {new Date(empresa.created_at).toLocaleDateString("es-MX")}
         </p>
       </div>
 
       <div className="flex items-center justify-between rounded-lg border border-linea bg-white p-4">
-        <span className={`insignia ${empresaCompleta.activa ? "text-verde" : "text-primario"}`}>
-          {empresaCompleta.activa ? "activo" : "desactivado"}
+        <span className={`insignia ${empresa.activa ? "text-verde" : "text-primario"}`}>
+          {empresa.activa ? "activo" : "desactivado"}
         </span>
-        <form action={cambiarEstado.bind(null, empresaCompleta.id, !empresaCompleta.activa)}>
+        <form action={cambiarEstado.bind(null, empresa.id, !empresa.activa)}>
           <button
             type="submit"
             className="rounded-md border border-linea px-4 py-2 text-sm font-medium text-ink transition hover:border-primario"
           >
-            {empresaCompleta.activa ? "Desactivar" : "Activar"}
+            {empresa.activa ? "Desactivar" : "Activar"}
           </button>
         </form>
       </div>
 
       <form
-        action={actualizarPrecio.bind(null, empresaCompleta.id)}
+        action={actualizarPrecio.bind(null, empresa.id)}
         className="flex flex-col gap-3 rounded-lg border border-linea bg-white p-4"
       >
         <label htmlFor="precio_mensual" className="text-sm font-medium text-ink">
@@ -82,7 +109,7 @@ export default async function EmpresaDetallePage({
             type="number"
             step="0.01"
             min="0"
-            defaultValue={empresaCompleta.precio_mensual}
+            defaultValue={precioMensual}
             className="flex-1 rounded-md border border-linea px-3 py-2 text-ink focus:border-primario focus:outline-none"
           />
           <button
@@ -95,7 +122,7 @@ export default async function EmpresaDetallePage({
       </form>
 
       <form
-        action={registrarPago.bind(null, empresaCompleta.id)}
+        action={registrarPago.bind(null, empresa.id)}
         className="flex flex-col gap-3 rounded-lg border border-linea bg-white p-4"
       >
         <h2 className="text-sm font-medium text-ink">Registrar un pago</h2>
@@ -124,7 +151,7 @@ export default async function EmpresaDetallePage({
 
       <div className="rounded-lg border border-linea bg-white p-4">
         <h2 className="mb-3 text-sm font-medium text-ink">Historial de pagos</h2>
-        {pagos?.length ? (
+        {pagos.length ? (
           <ul className="flex flex-col gap-2 text-sm">
             {pagos.map((p) => (
               <li
@@ -148,7 +175,7 @@ export default async function EmpresaDetallePage({
 
       {/* Tipo de negocio — multi-selección */}
       <form
-        action={actualizarTipoNegocio.bind(null, empresaCompleta.id)}
+        action={actualizarTipoNegocio.bind(null, empresa.id)}
         className="flex flex-col gap-3 rounded-lg border border-linea bg-white p-4"
       >
         <div>
@@ -166,10 +193,14 @@ export default async function EmpresaDetallePage({
             { val: "tecnologia", label: "💻 Tecnología" },
             { val: "papeleria", label: "📚 Papelería" },
           ].map(({ val, label }) => {
-            const tipos = (empresaCompleta as { tipos_negocio?: string[] | null }).tipos_negocio ?? [(empresaCompleta as { tipo_negocio?: string | null }).tipo_negocio ?? "tienda"];
-            const activo = tipos.includes(val);
+            const activo = tiposNegocio.includes(val);
             return (
-              <label key={val} className={`flex items-center gap-2 rounded-lg border p-3 cursor-pointer transition ${activo ? "border-primario bg-primario-suave" : "border-linea hover:border-primario/50"}`}>
+              <label
+                key={val}
+                className={`flex items-center gap-2 rounded-lg border p-3 cursor-pointer transition ${
+                  activo ? "border-primario bg-primario-suave" : "border-linea hover:border-primario/50"
+                }`}
+              >
                 <input
                   type="checkbox"
                   name="tipos_negocio"
@@ -186,7 +217,7 @@ export default async function EmpresaDetallePage({
         <label className="text-sm font-medium text-ink">Buscador de productos</label>
         <select
           name="buscador_productos"
-          defaultValue={empresaCompleta.buscador_productos ?? "openfoodfacts"}
+          defaultValue={buscadorProductos ?? "openfoodfacts"}
           className="w-full rounded-md border border-linea px-3 py-2 text-sm text-ink focus:border-primario focus:outline-none"
         >
           <option value="openfoodfacts">🥫 Open Food Facts — abarrotes / alimentos</option>
@@ -210,8 +241,8 @@ export default async function EmpresaDetallePage({
           </p>
         </div>
         <ConfiguradorBuscadores
-          companyId={empresaCompleta.id}
-          configActual={empresaCompleta.buscadores_config as Parameters<typeof ConfiguradorBuscadores>[0]["configActual"]}
+          companyId={empresa.id}
+          configActual={buscadoresConfig as Parameters<typeof ConfiguradorBuscadores>[0]["configActual"]}
           onGuardar={guardarBuscadores}
         />
       </div>
@@ -224,12 +255,12 @@ export default async function EmpresaDetallePage({
             Si el negocio tiene historial de ventas, solo se desactivará. Si es una cuenta de prueba sin ventas, se borrará permanentemente.
           </p>
         </div>
-        <form action={borrarEmpresa.bind(null, empresaCompleta.id)}>
+        <form action={borrarEmpresa.bind(null, empresa.id)}>
           <button
             type="submit"
             className="rounded-md border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100"
             onClick={(e) => {
-              if (!confirm(`¿Seguro que quieres eliminar "${empresaCompleta.name}"? Esta acción puede no ser reversible.`)) {
+              if (!confirm(`¿Seguro que quieres eliminar "${empresa.name}"? Esta acción puede no ser reversible.`)) {
                 e.preventDefault();
               }
             }}
@@ -240,7 +271,7 @@ export default async function EmpresaDetallePage({
       </div>
 
       <Link href="/reseller" className="text-sm text-primario hover:underline">
-        Regresar
+        ← Regresar
       </Link>
     </div>
   );
