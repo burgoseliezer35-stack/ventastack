@@ -95,15 +95,18 @@ export async function GET(request: Request) {
   const userId = data.claims.sub as string;
   const { data: perfil } = await supabase.from("profiles").select("company_id").eq("id", userId).single();
 
-  // 1. Buscar en caché
-  const { data: cached } = await supabase
-    .from("cache_productos_barcode")
-    .select("nombre, categoria, imagen_url, fuente")
-    .eq("codigo_barras", codigo)
-    .single();
+  // 1. Buscar en caché (filtrado por empresa para no mezclar resultados)
+  if (perfil?.company_id) {
+    const { data: cached } = await supabase
+      .from("cache_productos_barcode")
+      .select("nombre, categoria, imagen_url, fuente")
+      .eq("codigo_barras", codigo)
+      .eq("company_id", perfil.company_id)
+      .single();
 
-  if (cached?.nombre) {
-    return NextResponse.json({ encontrado: true, ...cached, desde_cache: true });
+    if (cached?.nombre) {
+      return NextResponse.json({ encontrado: true, ...cached, desde_cache: true });
+    }
   }
 
   // 2. Obtener configuración de buscadores de la empresa
@@ -147,5 +150,8 @@ export async function GET(request: Request) {
     }, { onConflict: "company_id,codigo_barras" });
   }
 
-  return NextResponse.json(resultado);
+  return NextResponse.json({
+    ...resultado,
+    fuentes_consultadas: ORDEN.filter(f => buscadoresConfig[f]?.activo),
+  });
 }
