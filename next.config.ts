@@ -9,8 +9,8 @@ const csp = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline'",
-  "img-src * data: blob:",
-  "connect-src 'self' https://*.supabase.co",
+  "img-src * data: blob: http: https:",
+  "connect-src 'self' https://*.supabase.co https://* http://*",
   "font-src 'self' data:",
   "object-src 'none'",
   "base-uri 'self'",
@@ -54,7 +54,7 @@ const nextConfig: NextConfig = {
             // encendidos ubicación y micrófono SOLO para este mismo
             // sitio — los necesitan "Ver rutas" y "Hablar pedido".
             key: "Permissions-Policy",
-            value: "geolocation=(self), microphone=(self), camera=(), payment=(), usb=()",
+            value: "geolocation=(self), microphone=(self), camera=(self), payment=(), usb=()",
           },
           {
             key: "Content-Security-Policy",
