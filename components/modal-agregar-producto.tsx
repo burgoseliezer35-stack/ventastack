@@ -1,7 +1,7 @@
 "use client";
 
 import { imgUrl } from "@/lib/img-proxy";
-
+import { createClient } from "@/lib/supabase/client";
 import { useState, useRef, useEffect } from "react";
 import { Plus, X, Loader2, CheckCircle, Camera, ImageOff } from "lucide-react";
 
@@ -63,35 +63,61 @@ export function ModalAgregarProducto({
     }, 600);
   }, [codigo]);
 
-  // Comprime la imagen a máx 400px y calidad 70% antes de guardar como base64
-  // Evita que fotos de celular (~3-5MB) rompan la fila de Postgres
-  const comprimirImagen = (archivo: File): Promise<string> =>
-    new Promise((resolve) => {
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
+
+  const comprimirABlob = (archivo: File): Promise<Blob> =>
+    new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onloadend = () => {
         const img = new window.Image();
         img.onload = () => {
-          const MAX = 400;
+          const MAX = 600;
           const escala = Math.min(1, MAX / Math.max(img.width, img.height));
           const canvas = document.createElement("canvas");
           canvas.width = Math.round(img.width * escala);
           canvas.height = Math.round(img.height * escala);
-          const ctx = canvas.getContext("2d")!;
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          resolve(canvas.toDataURL("image/jpeg", 0.7));
+          canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+          canvas.toBlob((b) => b ? resolve(b) : reject(new Error("Error")), "image/jpeg", 0.8);
         };
+        img.onerror = reject;
         img.src = reader.result as string;
       };
+      reader.onerror = reject;
       reader.readAsDataURL(archivo);
     });
 
-  // Convierte la foto del celular a base64 comprimido y la usa como imagen del producto
+  // Sube la foto a Supabase Storage bucket "productos" y guarda la URL pública
   const manejarFotoManual = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const archivo = e.target.files?.[0];
     if (!archivo) return;
-    const url = await comprimirImagen(archivo);
-    setImagenManual(url);
-    if (imagenUrlRef.current) imagenUrlRef.current.value = url;
+
+    // Preview inmediato
+    const reader = new FileReader();
+    reader.onloadend = () => setImagenManual(reader.result as string);
+    reader.readAsDataURL(archivo);
+
+    setSubiendoFoto(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      const blob = await comprimirABlob(archivo);
+      const ruta = `productos/${user?.id ?? "anon"}-${Date.now()}.jpg`;
+      const { error } = await supabase.storage
+        .from("productos")
+        .upload(ruta, blob, { contentType: "image/jpeg", upsert: true });
+      if (!error) {
+        const { data } = supabase.storage.from("productos").getPublicUrl(ruta);
+        setImagenManual(data.publicUrl);
+        if (imagenUrlRef.current) imagenUrlRef.current.value = data.publicUrl;
+      } else {
+        // Fallback base64 si falla Storage
+        if (imagenUrlRef.current) imagenUrlRef.current.value = reader.result as string ?? "";
+      }
+    } catch {
+      // Fallback: mantener base64 del preview
+    } finally {
+      setSubiendoFoto(false);
+    }
   };
 
   const cerrar = () => {
@@ -219,7 +245,6 @@ export function ModalAgregarProducto({
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
-                  capture="environment"
                   className="hidden"
                   onChange={manejarFotoManual}
                 />
