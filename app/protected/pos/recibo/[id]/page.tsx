@@ -36,38 +36,31 @@ export default async function ReciboPage({
   } | null = null;
 
   if (companyId) {
-    // Primero campos base
-    const { data: empBase } = await supabase
+    // Un solo select con todos los campos para evitar que RLS bloquee alguno
+    const { data: emp } = await supabase
       .from("companies")
-      .select("name")
+      .select("name, logo_url, rfc, razon_social, calle, colonia, ciudad, estado_empresa, codigo_postal, telefono, iva_porcentaje, iva_incluido, ieps_habilitado, ieps_porcentaje, pie_ticket")
       .eq("id", companyId)
       .single();
 
-    // Select directo con todos los campos — migraciones ya corridas
-    const { data: ext } = await supabase
-      .from("companies")
-      .select("logo_url, rfc, razon_social, calle, colonia, ciudad, estado_empresa, codigo_postal, telefono, iva_porcentaje, iva_incluido, ieps_habilitado, ieps_porcentaje, pie_ticket")
-      .eq("id", companyId)
-      .single();
-    const empExt: Record<string, unknown> = (ext as Record<string, unknown>) ?? {};
-
-    if (empBase) {
+    if (emp) {
+      const e = emp as Record<string, unknown>;
       empresa = {
-        name: empBase.name,
-        logo_url: (empExt.logo_url as string | null) ?? null,
-        rfc: (empExt.rfc as string | null) ?? null,
-        razon_social: (empExt.razon_social as string | null) ?? null,
-        calle: (empExt.calle as string | null) ?? null,
-        colonia: (empExt.colonia as string | null) ?? null,
-        ciudad: (empExt.ciudad as string | null) ?? null,
-        estado_empresa: (empExt.estado_empresa as string | null) ?? null,
-        codigo_postal: (empExt.codigo_postal as string | null) ?? null,
-        telefono: (empExt.telefono as string | null) ?? null,
-        iva_porcentaje: (empExt.iva_porcentaje as number | null) ?? null,
-        iva_incluido: (empExt.iva_incluido as boolean | null) ?? null,
-        ieps_habilitado: (empExt.ieps_habilitado as boolean | null) ?? null,
-        ieps_porcentaje: (empExt.ieps_porcentaje as number | null) ?? null,
-        pie_ticket: (empExt.pie_ticket as string | null) ?? null,
+        name: (e.name as string) ?? "Mi Negocio",
+        logo_url: (e.logo_url as string | null) ?? null,
+        rfc: (e.rfc as string | null) ?? null,
+        razon_social: (e.razon_social as string | null) ?? null,
+        calle: (e.calle as string | null) ?? null,
+        colonia: (e.colonia as string | null) ?? null,
+        ciudad: (e.ciudad as string | null) ?? null,
+        estado_empresa: (e.estado_empresa as string | null) ?? null,
+        codigo_postal: (e.codigo_postal as string | null) ?? null,
+        telefono: (e.telefono as string | null) ?? null,
+        iva_porcentaje: (e.iva_porcentaje as number | null) ?? null,
+        iva_incluido: (e.iva_incluido as boolean | null) ?? null,
+        ieps_habilitado: (e.ieps_habilitado as boolean | null) ?? null,
+        ieps_porcentaje: (e.ieps_porcentaje as number | null) ?? null,
+        pie_ticket: (e.pie_ticket as string | null) ?? null,
       };
     }
   }
