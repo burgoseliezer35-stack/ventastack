@@ -441,6 +441,7 @@ export function PosForm({
         p_metodo_pago: metodoPago,
         p_efectivo_recibido: efectivoNum,
         p_cambio: cambioNum,
+        p_total: total, // total real con IVA/IEPS calculado en el cliente
         p_items: carrito.map((i) => ({
           producto_id: i.producto_id,
           cantidad: i.cantidad,
