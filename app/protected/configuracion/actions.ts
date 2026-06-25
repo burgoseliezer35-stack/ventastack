@@ -31,6 +31,7 @@ export async function guardarConfiguracion(
       ciudad: str("ciudad"),
       estado_empresa: str("estado_empresa"),
       codigo_postal: str("codigo_postal"),
+      pie_ticket: str("pie_ticket"),
     };
   } else if (tab === "impuestos") {
     campos = {
