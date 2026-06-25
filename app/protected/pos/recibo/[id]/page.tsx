@@ -43,16 +43,13 @@ export default async function ReciboPage({
       .eq("id", companyId)
       .single();
 
-    // Luego campos extendidos (pueden no existir si migraciones no corridas)
-    let empExt: Record<string, unknown> = {};
-    try {
-      const { data: ext } = await supabase
-        .from("companies")
-        .select("logo_url, rfc, razon_social, calle, colonia, ciudad, estado_empresa, codigo_postal, telefono, iva_porcentaje, iva_incluido, ieps_habilitado, ieps_porcentaje, pie_ticket")
-        .eq("id", companyId)
-        .single();
-      empExt = (ext as Record<string, unknown>) ?? {};
-    } catch { /* columnas no existen aún */ }
+    // Select directo con todos los campos — migraciones ya corridas
+    const { data: ext } = await supabase
+      .from("companies")
+      .select("logo_url, rfc, razon_social, calle, colonia, ciudad, estado_empresa, codigo_postal, telefono, iva_porcentaje, iva_incluido, ieps_habilitado, ieps_porcentaje, pie_ticket")
+      .eq("id", companyId)
+      .single();
+    const empExt: Record<string, unknown> = (ext as Record<string, unknown>) ?? {};
 
     if (empBase) {
       empresa = {
