@@ -18,6 +18,7 @@ export default async function ConteoPage() {
   const { data: productos } = await supabase
     .from("productos")
     .select("id, nombre, codigo_barras, stock, imagen_url")
+    .eq("company_id", perfil.company_id)
     .eq("activo", true)
     .order("nombre");
 
