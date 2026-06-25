@@ -123,6 +123,7 @@ export function Recibo({
 
       {/* Desglose de impuestos y TOTAL */}
       <div style={{ borderTop: "1px dashed #999", padding: "4px 0", fontSize: 10 }}>
+        {/* Subtotal e impuestos */}
         <div style={{ display: "flex", justifyContent: "space-between" }}>
           <span>Subtotal</span>
           <span>${baseGravable.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
@@ -139,23 +140,26 @@ export function Recibo({
             <span>${montoIeps.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
           </div>
         )}
-        <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold", fontSize: 13, marginTop: 2 }}>
-          <span>TOTAL</span>
-          <span>${totalFinal.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
-        </div>
-        {/* Efectivo y cambio — van después del TOTAL */}
+
+        {/* Efectivo y cambio — antes del TOTAL */}
         {efectivoRecibido != null && (
-          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4, fontSize: 10 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 2 }}>
             <span>Efectivo recibido</span>
             <span>${efectivoRecibido.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
           </div>
         )}
         {cambio != null && cambio > 0 && (
-          <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold", fontSize: 11 }}>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
             <span>Cambio</span>
             <span>${cambio.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
           </div>
         )}
+
+        {/* Línea separadora antes del TOTAL */}
+        <div style={{ borderTop: "1px solid #333", marginTop: 4, paddingTop: 4, display: "flex", justifyContent: "space-between", fontWeight: "bold", fontSize: 13 }}>
+          <span>TOTAL</span>
+          <span>${totalFinal.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+        </div>
       </div>
 
       {/* QR */}
