@@ -33,6 +33,7 @@ type Empresa = {
   csd_cer?: string | null;
   csd_key?: string | null;
   csd_password?: string | null;
+  pie_ticket?: string | null;
 };
 
 const TABS = [
@@ -220,6 +221,13 @@ export function ConfiguracionTabs({
                     <input name="codigo_postal" type="text" defaultValue={empresa.codigo_postal ?? ""}
                       className="w-full rounded-md border border-linea px-3 py-2 text-sm text-ink focus:border-primario focus:outline-none" />
                   </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-medium text-ink/60 mb-1">Pie de ticket / Política de garantía</label>
+                    <textarea name="pie_ticket" rows={3} defaultValue={empresa.pie_ticket ?? ""}
+                      placeholder="Ej: Garantía de 30 días en todos nuestros productos. Sin devoluciones en efectivo."
+                      className="w-full rounded-md border border-linea px-3 py-2 text-sm text-ink focus:border-primario focus:outline-none resize-none" />
+                    <p className="mt-0.5 text-xs text-ink/40">Aparece al final de cada ticket de venta.</p>
+                  </div>
                 </div>
               </>
             ) : (
@@ -235,6 +243,7 @@ export function ConfiguracionTabs({
                 <div className="sm:col-span-2">
                   <Campo label="Dirección" valor={[empresa.calle, empresa.colonia, empresa.ciudad, empresa.estado_empresa, empresa.codigo_postal].filter(Boolean).join(", ")} />
                 </div>
+                <div className="sm:col-span-2"><Campo label="Pie de ticket" valor={empresa.pie_ticket} /></div>
                 {!empresa.name && !empresa.rfc && (
                   <p className="sm:col-span-2 text-sm text-ink/40 italic">Toca "Editar" para agregar tus datos.</p>
                 )}

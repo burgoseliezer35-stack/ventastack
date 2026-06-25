@@ -33,13 +33,14 @@ type ReciboProps = {
   iepsHabilitado: boolean;
   iepsPorcentaje: number;
   anchoMm?: number;
+  pieTicket?: string | null;
 };
 
 export function Recibo({
   pedidoId, empresa, logoUrl, razonSocial, rfc, direccion, telefono,
   cliente, metodoPago, total, fecha, renglones, atendidoPor,
   ivaPorcentaje, ivaIncluido, iepsHabilitado, iepsPorcentaje,
-  anchoMm = 72,
+  anchoMm = 72, pieTicket,
 }: ReciboProps) {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [ancho, setAncho] = useState<Ancho>(
@@ -147,7 +148,9 @@ export function Recibo({
         <div style={{ textAlign: "center", borderTop: "1px dashed #999", paddingTop: 6 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={qrDataUrl} alt="QR" width={90} height={90} style={{ margin: "0 auto" }} />
-          <div style={{ fontSize: 9, color: "#666", marginTop: 2 }}>Gracias por tu compra</div>
+          <div style={{ fontSize: 9, color: "#666", marginTop: 4, textAlign: "center", whiteSpace: "pre-line" }}>
+            {pieTicket || "Gracias por tu compra"}
+          </div>
         </div>
       )}
     </>
