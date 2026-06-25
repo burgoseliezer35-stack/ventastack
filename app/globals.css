@@ -53,3 +53,18 @@ body {
   border-radius: 999px;
   padding: 0.2rem 0.65rem;
 }
+
+/* ── Estabilidad móvil ──────────────────────────────────────
+   Evita que iOS Safari haga zoom al enfocar inputs (requiere
+   font-size >= 16px en todos los campos de texto).
+   También elimina el bounce/scroll extra en el body. */
+@media (max-width: 768px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+html, body {
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+}
