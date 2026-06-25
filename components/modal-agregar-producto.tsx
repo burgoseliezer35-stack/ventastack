@@ -102,19 +102,33 @@ export function ModalAgregarProducto({
       const { data: { user } } = await supabase.auth.getUser();
       const blob = await comprimirABlob(archivo);
       const ruta = `productos/${user?.id ?? "anon"}-${Date.now()}.jpg`;
-      const { error } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from("productos")
         .upload(ruta, blob, { contentType: "image/jpeg", upsert: true });
-      if (!error) {
+      if (!uploadError) {
         const { data } = supabase.storage.from("productos").getPublicUrl(ruta);
         setImagenManual(data.publicUrl);
         if (imagenUrlRef.current) imagenUrlRef.current.value = data.publicUrl;
       } else {
-        // Fallback base64 si falla Storage
-        if (imagenUrlRef.current) imagenUrlRef.current.value = reader.result as string ?? "";
+        // Fallback: base64 comprimido cuando Storage no está disponible
+        const blob2 = await comprimirABlob(archivo);
+        const fr = new FileReader();
+        fr.onloadend = () => {
+          const b64 = fr.result as string;
+          setImagenManual(b64);
+          if (imagenUrlRef.current) imagenUrlRef.current.value = b64;
+        };
+        fr.readAsDataURL(blob2);
       }
     } catch {
-      // Fallback: mantener base64 del preview
+      // Error total — usar base64 del preview
+      const fr = new FileReader();
+      fr.onloadend = () => {
+        const b64 = fr.result as string;
+        setImagenManual(b64);
+        if (imagenUrlRef.current) imagenUrlRef.current.value = b64;
+      };
+      fr.readAsDataURL(archivo);
     } finally {
       setSubiendoFoto(false);
     }
