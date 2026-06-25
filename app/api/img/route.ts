@@ -12,14 +12,16 @@ export async function GET(request: Request) {
 
   // Solo permitimos dominios conocidos de las APIs que usamos
   const dominiosPermitidos = [
-    "images.openfoodfacts.org",
-    "static.openfoodfacts.org",
-    "images.openbeautyfacts.org",
-    "images.openproductsfacts.org",
-    "image.upcitemdb.com",
-    "cdn.upcitemdb.com",
+    "openfoodfacts.org",
+    "openfoodfacts.net",
+    "openbeautyfacts.org",
+    "openproductsfacts.org",
+    "openpetfoodfacts.org",
+    "upcitemdb.com",
     "go-upc.com",
     "barcodespider.com",
+    "buycott.com",
+    "instacart.com",
   ];
 
   let urlObj: URL;
