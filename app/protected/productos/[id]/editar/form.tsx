@@ -68,21 +68,53 @@ export function EditarProductoForm({
 
     setSubiendoFoto(true);
     try {
+      // Intentar subir a Storage
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       const blob = await comprimirABlob(archivo);
       const ruta = `productos/${user?.id ?? "anon"}-${Date.now()}.jpg`;
-      const { error } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from("productos")
         .upload(ruta, blob, { contentType: "image/jpeg", upsert: true });
 
-      if (!error) {
+      if (!uploadError) {
+        // Storage OK — usar URL pública
         const { data } = supabase.storage.from("productos").getPublicUrl(ruta);
         setPreview(data.publicUrl);
         setUrlImagen(data.publicUrl);
         if (imagenHiddenRef.current) imagenHiddenRef.current.value = data.publicUrl;
+      } else {
+        // Storage falló — guardar como base64 comprimido (fallback)
+        const canvas = document.createElement("canvas");
+        const img = new window.Image();
+        await new Promise<void>((res) => {
+          img.onload = () => {
+            const MAX = 400;
+            const s = Math.min(1, MAX / Math.max(img.width, img.height));
+            canvas.width = Math.round(img.width * s);
+            canvas.height = Math.round(img.height * s);
+            canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+            res();
+          };
+          const fr = new FileReader();
+          fr.onloadend = () => { img.src = fr.result as string; };
+          fr.readAsDataURL(archivo);
+        });
+        const base64 = canvas.toDataURL("image/jpeg", 0.6);
+        setPreview(base64);
+        setUrlImagen(base64);
+        if (imagenHiddenRef.current) imagenHiddenRef.current.value = base64;
       }
-    } catch { /* mantener preview */ }
+    } catch {
+      // Error total — al menos guardar el preview base64
+      const fr = new FileReader();
+      fr.onloadend = () => {
+        const b64 = fr.result as string;
+        setUrlImagen(b64);
+        if (imagenHiddenRef.current) imagenHiddenRef.current.value = b64;
+      };
+      fr.readAsDataURL(archivo);
+    }
     finally { setSubiendoFoto(false); }
   };
 
