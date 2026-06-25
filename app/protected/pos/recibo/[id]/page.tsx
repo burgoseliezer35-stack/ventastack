@@ -32,6 +32,7 @@ export default async function ReciboPage({
     ciudad: string | null; estado_empresa: string | null; codigo_postal: string | null;
     telefono: string | null; iva_porcentaje: number | null; iva_incluido: boolean | null;
     ieps_habilitado: boolean | null; ieps_porcentaje: number | null;
+    pie_ticket?: string | null;
   } | null = null;
 
   if (companyId) {
@@ -47,7 +48,7 @@ export default async function ReciboPage({
     try {
       const { data: ext } = await supabase
         .from("companies")
-        .select("logo_url, rfc, razon_social, calle, colonia, ciudad, estado_empresa, codigo_postal, telefono, iva_porcentaje, iva_incluido, ieps_habilitado, ieps_porcentaje")
+        .select("logo_url, rfc, razon_social, calle, colonia, ciudad, estado_empresa, codigo_postal, telefono, iva_porcentaje, iva_incluido, ieps_habilitado, ieps_porcentaje, pie_ticket")
         .eq("id", companyId)
         .single();
       empExt = (ext as Record<string, unknown>) ?? {};
@@ -69,6 +70,7 @@ export default async function ReciboPage({
         iva_incluido: (empExt.iva_incluido as boolean | null) ?? null,
         ieps_habilitado: (empExt.ieps_habilitado as boolean | null) ?? null,
         ieps_porcentaje: (empExt.ieps_porcentaje as number | null) ?? null,
+        pie_ticket: (empExt.pie_ticket as string | null) ?? null,
       };
     }
   }
@@ -131,6 +133,7 @@ export default async function ReciboPage({
       ivaIncluido={empresa?.iva_incluido ?? true}
       iepsHabilitado={empresa?.ieps_habilitado ?? false}
       iepsPorcentaje={empresa?.ieps_porcentaje ?? 0}
+      pieTicket={empresa?.pie_ticket ?? null}
     />
   );
 }
