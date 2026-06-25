@@ -28,12 +28,14 @@ export default async function PosPage() {
   const { data: productosRaw } = await supabase
     .from("productos")
     .select("id, nombre, precio, stock, codigo_barras, imagen_url")
+    .eq("company_id", miPerfil?.company_id ?? "")
     .eq("activo", true)
     .order("nombre");
 
   const { data: niveles } = await supabase
     .from("precios_mayoreo")
     .select("producto_id, cantidad_minima, precio_unitario")
+    .eq("company_id", miPerfil?.company_id ?? "")
     .order("cantidad_minima", { ascending: false });
 
   const productos = (productosRaw ?? []).map((p) => ({
