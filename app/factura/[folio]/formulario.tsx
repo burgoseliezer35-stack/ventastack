@@ -12,8 +12,8 @@ const REGIMENES = [
   { val: "612", label: "612 - Personas Físicas con Actividades Empresariales" },
   { val: "616", label: "616 - Sin obligaciones fiscales" },
   { val: "621", label: "621 - Incorporación Fiscal" },
-  { val: "625", label: "625 - Régimen de las Actividades Empresariales con ingresos a través de Plataformas Tecnológicas" },
-  { val: "626", label: "626 - Régimen Simplificado de Confianza (RESICO)" },
+  { val: "625", label: "625 - Plataformas Tecnológicas" },
+  { val: "626", label: "626 - RESICO" },
 ];
 
 const USOS_CFDI = [
@@ -29,94 +29,26 @@ const USOS_CFDI = [
   { val: "S01", label: "S01 - Sin efectos fiscales" },
 ];
 
-type Props = {
-  pedidoId: string;
-  companyId: string;
-  folio: string;
-  total: number;
-};
-
 type Campos = {
-  rfc: string;
-  nombre: string;
-  codigo_postal: string;
-  regimen_fiscal: string;
-  uso_cfdi: string;
-  email: string;
-  whatsapp: string;
+  rfc: string; nombre: string; codigo_postal: string;
+  regimen_fiscal: string; uso_cfdi: string;
+  email: string; whatsapp: string;
 };
 
-const CAMPOS_VACIOS: Campos = {
+const VACIOS: Campos = {
   rfc: "", nombre: "", codigo_postal: "",
   regimen_fiscal: "", uso_cfdi: "G03",
   email: "", whatsapp: "",
 };
 
-// Extrae datos del PDF de Constancia de Situación Fiscal del SAT
-async function extraerDatosConstancia(archivo: File): Promise<Partial<Campos>> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const pdfjsLib = await import("pdfjs-dist" as any);
-  const { getDocument, GlobalWorkerOptions } = pdfjsLib;
-  GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@6.0.227/build/pdf.worker.min.mjs`;
-
-  const arrayBuffer = await archivo.arrayBuffer();
-  const pdf = await getDocument({ data: arrayBuffer }).promise;
-
-  let texto = "";
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const content = await page.getTextContent();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      texto += content.items.map((item: any) => item.str ?? "").join(" ") + "\n";
-  }
-
-  const datos: Partial<Campos> = {};
-
-  // RFC — patrón estándar SAT
-  const rfcMatch = texto.match(/RFC[:\s]+([A-Z&Ñ]{3,4}[0-9]{6}[A-Z0-9]{3})/i);
-  if (rfcMatch) datos.rfc = rfcMatch[1].trim();
-
-  // CP — "Código Postal:" seguido de 5 dígitos
-  const cpMatch = texto.match(/[Cc]ódigo\s+[Pp]ostal[:\s]+(\d{5})/);
-  if (cpMatch) datos.codigo_postal = cpMatch[1];
-
-  // Email
-  const emailMatch = texto.match(/([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/);
-  if (emailMatch) datos.email = emailMatch[1];
-
-  // Nombre — entre "RFC:" y "CURP:" en constancia
-  const nombreMatch = texto.match(/(?:Nombre[^:]*:|NOMBRE[^:]*:)\s*([A-ZÁÉÍÓÚÑ\s]+?)(?:\s{2,}|RFC|CURP|Fecha|$)/i);
-  if (nombreMatch) datos.nombre = nombreMatch[1].trim();
-
-  // Si nombre viene como apellidos separados, reconstruir
-  if (!datos.nombre) {
-    const primerNombre = texto.match(/Nombre\s*\(s\)[:\s]+([A-ZÁÉÍÓÚÑ\s]+?)(?:\s{2,}|Primer)/i);
-    const primerAp = texto.match(/Primer\s+Apellido[:\s]+([A-ZÁÉÍÓÚÑ]+)/i);
-    const segundoAp = texto.match(/Segundo\s+Apellido[:\s]+([A-ZÁÉÍÓÚÑ]+)/i);
-    if (primerAp) {
-      datos.nombre = [
-        primerAp[1].trim(),
-        segundoAp?.[1]?.trim() ?? "",
-        primerNombre?.[1]?.trim() ?? "",
-      ].filter(Boolean).join(" ");
-    }
-  }
-
-  // Régimen — buscar el código
-  for (const r of REGIMENES) {
-    if (texto.includes(r.label.split(" - ")[1]) || texto.includes(r.val)) {
-      datos.regimen_fiscal = r.val;
-      break;
-    }
-  }
-
-  return datos;
-}
-
-export function FormularioFactura({ pedidoId, companyId, folio, total }: Props) {
-  const [campos, setCampos] = useState<Campos>(CAMPOS_VACIOS);
-  const [leyendoPdf, setLeyendoPdf] = useState(false);
-  const [subiendoConstancia, setSubiendoConstancia] = useState(false);
+export function FormularioFactura({
+  pedidoId, companyId, folio, total,
+}: {
+  pedidoId: string; companyId: string; folio: string; total: number;
+}) {
+  const [campos, setCampos] = useState<Campos>(VACIOS);
+  const [leyendo, setLeyendo] = useState(false);
+  const [subiendo, setSubiendo] = useState(false);
   const [constanciaUrl, setConstanciaUrl] = useState<string | null>(null);
   const [constanciaNombre, setConstanciaNombre] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
@@ -124,40 +56,45 @@ export function FormularioFactura({ pedidoId, companyId, folio, total }: Props) 
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const set = (k: keyof Campos, v: string) => setCampos((p) => ({ ...p, [k]: v }));
+  const set = (k: keyof Campos, v: string) =>
+    setCampos((p) => ({ ...p, [k]: v }));
 
   const manejarConstancia = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const archivo = e.target.files?.[0];
     if (!archivo) return;
-
     setConstanciaNombre(archivo.name);
-    setLeyendoPdf(true);
     setError(null);
 
+    // 1. Leer datos del PDF via API del servidor
+    setLeyendo(true);
     try {
-      // Extraer datos del PDF
-      const datos = await extraerDatosConstancia(archivo);
-      setCampos((prev) => ({ ...prev, ...datos }));
+      const fd = new FormData();
+      fd.append("pdf", archivo);
+      const res = await fetch("/api/leer-constancia", { method: "POST", body: fd });
+      if (res.ok) {
+        const datos = await res.json();
+        setCampos((prev) => ({ ...prev, ...datos }));
+      }
+    } catch {
+      setError("No se pudieron leer los datos. Llena los campos manualmente.");
+    } finally {
+      setLeyendo(false);
+    }
 
-      // Subir a Storage
-      setSubiendoConstancia(true);
+    // 2. Subir PDF a Storage
+    setSubiendo(true);
+    try {
       const supabase = createClient();
       const ruta = `constancias/${companyId}/${folio}-${Date.now()}.pdf`;
       const { error: upErr } = await supabase.storage
         .from("facturas")
         .upload(ruta, archivo, { contentType: "application/pdf", upsert: true });
-
       if (!upErr) {
         const { data } = supabase.storage.from("facturas").getPublicUrl(ruta);
         setConstanciaUrl(data.publicUrl);
       }
-    } catch (err) {
-      console.error(err);
-      setError("No se pudieron leer los datos del PDF. Llena los campos manualmente.");
-    } finally {
-      setLeyendoPdf(false);
-      setSubiendoConstancia(false);
-    }
+    } catch { /* storage opcional */ }
+    finally { setSubiendo(false); }
   };
 
   const enviar = async () => {
@@ -167,12 +104,10 @@ export function FormularioFactura({ pedidoId, companyId, folio, total }: Props) 
     }
     setEnviando(true);
     setError(null);
-
     try {
       const supabase = createClient();
 
-      // Upsert cliente fiscal (si el RFC ya existe, actualiza)
-      const { data: clienteFiscal, error: cfErr } = await supabase
+      const { data: cf, error: cfErr } = await supabase
         .from("clientes_fiscales")
         .upsert({
           company_id: companyId,
@@ -190,24 +125,21 @@ export function FormularioFactura({ pedidoId, companyId, folio, total }: Props) 
 
       if (cfErr) throw cfErr;
 
-      // Insertar solicitud
       const { error: solErr } = await supabase
         .from("solicitudes_factura")
         .insert({
           company_id: companyId,
           pedido_id: pedidoId,
-          cliente_fiscal_id: clienteFiscal.id,
+          cliente_fiscal_id: cf.id,
           folio,
           uso_cfdi: campos.uso_cfdi,
           estado: "pendiente",
         });
 
       if (solErr) throw solErr;
-
       setEnviado(true);
-    } catch (err) {
-      console.error(err);
-      setError("Error al enviar la solicitud. Intenta de nuevo.");
+    } catch {
+      setError("Error al enviar. Intenta de nuevo.");
     } finally {
       setEnviando(false);
     }
@@ -218,13 +150,15 @@ export function FormularioFactura({ pedidoId, companyId, folio, total }: Props) 
       <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center shadow-sm">
         <CheckCircle size={48} className="mx-auto mb-4 text-green-500" />
         <h2 className="text-xl font-bold text-gray-900 mb-2">Solicitud enviada</h2>
-        <p className="text-sm text-gray-500 mb-1">
+        <p className="text-sm text-gray-500">
           Recibirás tu factura en el correo y WhatsApp que proporcionaste.
         </p>
         <p className="text-xs text-gray-400 mt-4">Folio: {folio}</p>
       </div>
     );
   }
+
+  const procesando = leyendo || subiendo;
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
@@ -236,21 +170,15 @@ export function FormularioFactura({ pedidoId, companyId, folio, total }: Props) 
         <p className="text-xs text-gray-500 mb-3">
           Sube tu constancia del SAT y llenaremos los datos automáticamente.
         </p>
-        <button
-          type="button"
-          onClick={() => fileRef.current?.click()}
-          disabled={leyendoPdf || subiendoConstancia}
-          className="w-full rounded-xl border-2 border-dashed border-gray-200 hover:border-blue-400 transition p-4 flex flex-col items-center gap-2 disabled:opacity-50"
-        >
-          {leyendoPdf ? (
+        <button type="button" onClick={() => fileRef.current?.click()}
+          disabled={procesando}
+          className="w-full rounded-xl border-2 border-dashed border-gray-200 hover:border-blue-400 transition p-4 flex flex-col items-center gap-2 disabled:opacity-50">
+          {procesando ? (
             <>
               <div className="h-6 w-6 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
-              <span className="text-xs text-blue-600">Leyendo PDF...</span>
-            </>
-          ) : subiendoConstancia ? (
-            <>
-              <div className="h-6 w-6 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
-              <span className="text-xs text-blue-600">Subiendo...</span>
+              <span className="text-xs text-blue-600">
+                {leyendo ? "Leyendo datos del PDF..." : "Subiendo archivo..."}
+              </span>
             </>
           ) : constanciaNombre ? (
             <>
@@ -270,18 +198,18 @@ export function FormularioFactura({ pedidoId, companyId, folio, total }: Props) 
           className="hidden" onChange={manejarConstancia} />
       </div>
 
-      {/* Formulario */}
+      {/* Campos */}
       <div className="p-5 flex flex-col gap-4">
         <p className="text-xs text-gray-500">
-          Revisa o completa los datos. Los campos marcados con * son obligatorios.
+          Revisa o completa los datos. Los campos con * son obligatorios.
         </p>
 
         {[
-          { key: "rfc", label: "RFC *", placeholder: "AAPU790804II9", upper: true },
-          { key: "nombre", label: "Nombre / Razón social *", placeholder: "ULISES ALCANTARA PEREZ" },
-          { key: "codigo_postal", label: "Código postal fiscal *", placeholder: "07400" },
-          { key: "email", label: "Correo electrónico", placeholder: "tu@correo.com" },
-          { key: "whatsapp", label: "WhatsApp (con lada)", placeholder: "5557578026" },
+          { key: "rfc",           label: "RFC *",                    placeholder: "AAPU790804II9", upper: true },
+          { key: "nombre",        label: "Nombre / Razón social *",  placeholder: "ULISES ALCANTARA PEREZ" },
+          { key: "codigo_postal", label: "Código postal fiscal *",   placeholder: "07400" },
+          { key: "email",         label: "Correo electrónico",       placeholder: "tu@correo.com" },
+          { key: "whatsapp",      label: "WhatsApp (con lada)",      placeholder: "5557578026" },
         ].map(({ key, label, placeholder, upper }) => (
           <div key={key}>
             <label className="block text-xs font-medium text-gray-700 mb-1">{label}</label>
@@ -297,22 +225,20 @@ export function FormularioFactura({ pedidoId, companyId, folio, total }: Props) 
 
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">Régimen fiscal *</label>
-          <select value={campos.regimen_fiscal} onChange={(e) => set("regimen_fiscal", e.target.value)}
+          <select value={campos.regimen_fiscal}
+            onChange={(e) => set("regimen_fiscal", e.target.value)}
             className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-900 focus:border-blue-400 focus:outline-none">
             <option value="">Seleccionar...</option>
-            {REGIMENES.map((r) => (
-              <option key={r.val} value={r.val}>{r.label}</option>
-            ))}
+            {REGIMENES.map((r) => <option key={r.val} value={r.val}>{r.label}</option>)}
           </select>
         </div>
 
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">Uso del CFDI</label>
-          <select value={campos.uso_cfdi} onChange={(e) => set("uso_cfdi", e.target.value)}
+          <select value={campos.uso_cfdi}
+            onChange={(e) => set("uso_cfdi", e.target.value)}
             className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-900 focus:border-blue-400 focus:outline-none">
-            {USOS_CFDI.map((u) => (
-              <option key={u.val} value={u.val}>{u.label}</option>
-            ))}
+            {USOS_CFDI.map((u) => <option key={u.val} value={u.val}>{u.label}</option>)}
           </select>
         </div>
 
@@ -323,13 +249,13 @@ export function FormularioFactura({ pedidoId, companyId, folio, total }: Props) 
           </div>
         )}
 
-        <button type="button" onClick={enviar} disabled={enviando}
+        <button type="button" onClick={enviar} disabled={enviando || procesando}
           className="w-full rounded-xl bg-blue-600 py-3.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50 mt-2">
-          {enviando ? "Enviando solicitud..." : "Solicitar factura"}
+          {enviando ? "Enviando..." : "Solicitar factura"}
         </button>
 
         <p className="text-center text-xs text-gray-400">
-          Tus datos fiscales son confidenciales y se usan solo para emitir tu factura.
+          Tus datos son confidenciales y se usan solo para tu factura.
         </p>
       </div>
     </div>
