@@ -10,9 +10,16 @@ export default async function VerificadorPage() {
     redirect("/auth/login");
   }
 
+  const { data: miPerfil } = await supabase
+    .from("profiles")
+    .select("company_id")
+    .eq("id", data.claims.sub as string)
+    .single();
+
   const { data: productosRaw } = await supabase
     .from("productos")
     .select("id, nombre, precio, stock, codigo_barras")
+    .eq("company_id", miPerfil?.company_id ?? "")
     .eq("activo", true)
     .order("nombre");
 
