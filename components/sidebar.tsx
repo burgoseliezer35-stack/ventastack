@@ -183,7 +183,7 @@ export function Sidebar({ nombre, rol, esAdmin, esVendedor, nombreEmpresa, tipoN
           <p className="text-center font-semibold text-ink">{nombre}</p>
           <span className="insignia bg-primario-suave text-primario">{rol}</span>
         </div>
-        <nav className="flex flex-1 flex-col gap-1 p-3">
+        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
           {enlaces.map((item) =>
             item.tipo === "enlace" ? (
               <EnlaceNav key={item.href} item={item} activo={pathname === item.href} onClick={() => {}} />
@@ -192,7 +192,7 @@ export function Sidebar({ nombre, rol, esAdmin, esVendedor, nombreEmpresa, tipoN
             ),
           )}
         </nav>
-        <div className="border-t border-linea p-3"><BotonSalir /></div>
+        <div className="border-t border-linea p-3 shrink-0"><BotonSalir /></div>
       </aside>
 
       {/* Mobile: top bar */}
