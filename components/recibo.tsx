@@ -108,12 +108,6 @@ export function Recibo({
       <div style={{ borderTop: "1px dashed #999", padding: "4px 0", fontSize: 10 }}>
         <div>Cliente: {cliente}</div>
         <div>Pago: {metodoPago}</div>
-        {efectivoRecibido != null && (
-          <div>Recibido: ${efectivoRecibido.toLocaleString("en-US", { minimumFractionDigits: 2 })}</div>
-        )}
-        {cambio != null && cambio > 0 && (
-          <div style={{ fontWeight: "bold" }}>Cambio: ${cambio.toLocaleString("en-US", { minimumFractionDigits: 2 })}</div>
-        )}
         {atendidoPor && <div>Atendió: {atendidoPor}</div>}
       </div>
 
@@ -127,7 +121,7 @@ export function Recibo({
         ))}
       </div>
 
-      {/* Desglose de impuestos */}
+      {/* Desglose de impuestos y TOTAL */}
       <div style={{ borderTop: "1px dashed #999", padding: "4px 0", fontSize: 10 }}>
         <div style={{ display: "flex", justifyContent: "space-between" }}>
           <span>Subtotal</span>
@@ -149,6 +143,19 @@ export function Recibo({
           <span>TOTAL</span>
           <span>${totalFinal.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
         </div>
+        {/* Efectivo y cambio — van después del TOTAL */}
+        {efectivoRecibido != null && (
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4, fontSize: 10 }}>
+            <span>Efectivo recibido</span>
+            <span>${efectivoRecibido.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+          </div>
+        )}
+        {cambio != null && cambio > 0 && (
+          <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold", fontSize: 11 }}>
+            <span>Cambio</span>
+            <span>${cambio.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+          </div>
+        )}
       </div>
 
       {/* QR */}
