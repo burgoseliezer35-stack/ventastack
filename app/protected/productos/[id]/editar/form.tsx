@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { imgUrl } from "@/lib/img-proxy";
 import { Camera } from "lucide-react";
@@ -24,13 +25,16 @@ export function EditarProductoForm({
 }: {
   producto: Producto;
   categorias: { id: string; nombre: string }[];
-  actualizarProducto: (id: string, formData: FormData) => Promise<void>;
+  actualizarProducto: (id: string, formData: FormData) => Promise<{ ok: boolean; error?: string }>;
 }) {
   const [preview, setPreview] = useState<string | null>(producto.imagen_url);
   const [subiendoFoto, setSubiendoFoto] = useState(false);
+  const [guardando, setGuardando] = useState(false);
   const [urlImagen, setUrlImagen] = useState<string | null>(producto.imagen_url);
   const fileRef = useRef<HTMLInputElement>(null);
   const imagenHiddenRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const router = useRouter();
 
   const comprimirABlob = (archivo: File): Promise<Blob> =>
     new Promise((resolve, reject) => {
@@ -102,7 +106,22 @@ export function EditarProductoForm({
         </div>
       </div>
 
-      <form action={actualizarProducto.bind(null, producto.id)} className="flex flex-col gap-4">
+      <form
+        ref={formRef}
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setGuardando(true);
+          // Asegurar que imagen_url tenga el valor correcto antes de enviar
+          if (imagenHiddenRef.current) {
+            imagenHiddenRef.current.value = urlImagen ?? "";
+          }
+          const formData = new FormData(formRef.current!);
+          await actualizarProducto(producto.id, formData);
+          router.push("/protected/productos");
+          router.refresh();
+        }}
+        className="flex flex-col gap-4"
+      >
 
         {/* Imagen */}
         <div>
@@ -191,9 +210,9 @@ export function EditarProductoForm({
           Activo (visible en el punto de venta)
         </label>
 
-        <button type="submit"
-          className="w-full rounded-md bg-primario px-4 py-2 font-medium text-white transition hover:opacity-90">
-          Guardar cambios
+        <button type="submit" disabled={guardando || subiendoFoto}
+          className="w-full rounded-md bg-primario px-4 py-2 font-medium text-white transition hover:opacity-90 disabled:opacity-50">
+          {guardando ? "Guardando..." : subiendoFoto ? "Esperando foto..." : "Guardar cambios"}
         </button>
       </form>
     </div>

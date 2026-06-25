@@ -2,12 +2,11 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 
 export async function actualizarProducto(
   productoId: string,
   formData: FormData,
-) {
+): Promise<{ ok: boolean; error?: string }> {
   const supabase = await createClient();
 
   const nombre = (formData.get("nombre") as string)?.trim();
@@ -18,20 +17,23 @@ export async function actualizarProducto(
   const imagenUrl = (formData.get("imagen_url") as string)?.trim() || null;
 
   if (!nombre || !Number.isFinite(precio) || precio <= 0) {
-    return;
+    return { ok: false, error: "Nombre y precio son requeridos" };
   }
 
   const { error } = await supabase
     .from("productos")
-    .update({ nombre, precio, activo, categoria_id: categoriaId, codigo_barras: codigoBarras, imagen_url: imagenUrl })
+    .update({
+      nombre,
+      precio,
+      activo,
+      categoria_id: categoriaId,
+      codigo_barras: codigoBarras,
+      imagen_url: imagenUrl,
+    })
     .eq("id", productoId);
 
-  if (error) {
-    redirect(
-      `/protected/productos/${productoId}/editar?error=${encodeURIComponent(error.message)}`,
-    );
-  }
+  if (error) return { ok: false, error: error.message };
 
   revalidatePath("/protected/productos");
-  redirect("/protected/productos");
+  return { ok: true };
 }
