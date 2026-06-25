@@ -10,14 +10,22 @@ export default async function NuevaCotizacionPage() {
     redirect("/auth/login");
   }
 
+  const { data: perfil } = await supabase
+    .from("profiles")
+    .select("company_id")
+    .eq("id", data.claims.sub as string)
+    .single();
+
   const { data: productos } = await supabase
     .from("productos")
     .select("id, nombre, precio")
+    .eq("company_id", perfil?.company_id)
     .order("nombre");
 
   const { data: clientes } = await supabase
     .from("clientes")
     .select("id, nombre")
+    .eq("company_id", perfil?.company_id)
     .order("nombre");
 
   return (
