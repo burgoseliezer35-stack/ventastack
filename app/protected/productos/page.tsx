@@ -49,6 +49,7 @@ export default async function ProductosPage({
   const { data: productosRaw } = await supabase
     .from("productos")
     .select("id, nombre, precio, costo, activo, stock, codigo_barras, imagen_url, categorias(nombre)")
+    .eq("company_id", miPerfil.company_id)
     .order("nombre");
 
   const { data: empresa } = await supabase
@@ -80,7 +81,7 @@ export default async function ProductosPage({
             href="/protected/productos/conteo"
             className="flex items-center gap-1.5 text-sm text-primario hover:underline"
           >
-            🔢 Conteo físico
+            Conteo físico
           </Link>
           <Link
             href="/protected/productos/categorias"
