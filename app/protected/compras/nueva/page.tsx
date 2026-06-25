@@ -11,14 +11,22 @@ export default async function NuevaCompraPage() {
     redirect("/auth/login");
   }
 
+  const { data: perfil } = await supabase
+    .from("profiles")
+    .select("company_id")
+    .eq("id", data.claims.sub as string)
+    .single();
+
   const { data: proveedores } = await supabase
     .from("proveedores")
     .select("id, nombre")
+    .eq("company_id", perfil?.company_id)
     .order("nombre");
 
   const { data: productos } = await supabase
     .from("productos")
     .select("id, nombre")
+    .eq("company_id", perfil?.company_id)
     .order("nombre");
 
   if (!proveedores?.length) {
