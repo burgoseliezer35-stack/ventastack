@@ -54,8 +54,10 @@ const CAMPOS_VACIOS: Campos = {
 
 // Extrae datos del PDF de Constancia de Situación Fiscal del SAT
 async function extraerDatosConstancia(archivo: File): Promise<Partial<Campos>> {
-  const { getDocument, GlobalWorkerOptions } = await import("pdfjs-dist");
-  GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pdfjsLib = await import("pdfjs-dist" as any);
+  const { getDocument, GlobalWorkerOptions } = pdfjsLib;
+  GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@6.0.227/build/pdf.worker.min.mjs`;
 
   const arrayBuffer = await archivo.arrayBuffer();
   const pdf = await getDocument({ data: arrayBuffer }).promise;
@@ -64,7 +66,8 @@ async function extraerDatosConstancia(archivo: File): Promise<Partial<Campos>> {
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
-    texto += content.items.map((item) => ("str" in item ? item.str : "")).join(" ") + "\n";
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      texto += content.items.map((item: any) => item.str ?? "").join(" ") + "\n";
   }
 
   const datos: Partial<Campos> = {};
