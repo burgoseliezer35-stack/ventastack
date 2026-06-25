@@ -75,13 +75,21 @@ export default async function ProductosPage({
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-ink">Catálogo</h1>
-        <Link
-          href="/protected/productos/categorias"
-          className="flex items-center gap-1.5 text-sm text-primario hover:underline"
-        >
-          <Tags size={15} />
-          Administrar categorías
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link
+            href="/protected/productos/conteo"
+            className="flex items-center gap-1.5 text-sm text-primario hover:underline"
+          >
+            🔢 Conteo físico
+          </Link>
+          <Link
+            href="/protected/productos/categorias"
+            className="flex items-center gap-1.5 text-sm text-primario hover:underline"
+          >
+            <Tags size={15} />
+            Categorías
+          </Link>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-linea bg-white p-4 shadow-sm">
