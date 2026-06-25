@@ -44,14 +44,14 @@ export default async function TransferenciaPage() {
   if (error || !data?.claims) redirect("/auth/login");
 
   const { data: miPerfil } = await supabase
-    .from("profiles").select("role").eq("id", data.claims.sub as string).single();
+    .from("profiles").select("role, company_id").eq("id", data.claims.sub as string).single();
   if (miPerfil?.role !== "admin") redirect("/protected");
 
   const { data: almacenes } = await supabase
     .from("almacenes").select("id, nombre, tipo").eq("activo", true).order("nombre");
 
   const { data: productos } = await supabase
-    .from("productos").select("id, nombre").eq("activo", true).order("nombre");
+    .from("productos").select("id, nombre").eq("company_id", miPerfil?.company_id ?? "").eq("activo", true).order("nombre");
 
   return (
     <div className="flex flex-col gap-4 max-w-xl">
