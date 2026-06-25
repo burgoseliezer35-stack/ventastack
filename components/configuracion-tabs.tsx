@@ -378,7 +378,7 @@ export function ConfiguracionTabs({
               </>
             ) : (
               <div className="flex flex-col gap-2">
-                <Campo label="Estado" valor={empresa.cfdi_habilitado ? "✓ Habilitado" : "Deshabilitado"} />
+                <Campo label="Estado" valor={empresa.cfdi_habilitado ? "Habilitado" : "Deshabilitado"} />
                 <Campo label="Régimen fiscal" valor={empresa.regimen_fiscal} />
                 <Campo label="CP fiscal" valor={empresa.cp_fiscal} />
                 <Campo label="PAC" valor={empresa.pac_nombre ? `${empresa.pac_nombre} (${empresa.pac_modo ?? "sandbox"})` : undefined} />

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Database } from "lucide-react";
 
 type FuenteConfig = {
   activo: boolean;
@@ -20,7 +21,7 @@ const FUENTES = [
   {
     id: "openfoodfacts",
     nombre: "Open Food Facts",
-    emoji: "🥫",
+    icono: "food",
     descripcion: "Alimentos, bebidas, abarrotes",
     gratis: true,
     url: null,
@@ -28,7 +29,7 @@ const FUENTES = [
   {
     id: "openbeautyfacts",
     nombre: "Open Beauty Facts",
-    emoji: "💄",
+    icono: "beauty",
     descripcion: "Cosméticos, cuidado personal, farmacia",
     gratis: true,
     url: null,
@@ -36,7 +37,7 @@ const FUENTES = [
   {
     id: "openproductsfacts",
     nombre: "Open Products Facts",
-    emoji: "📦",
+    icono: "box",
     descripcion: "Productos generales, hogar",
     gratis: true,
     url: null,
@@ -52,7 +53,7 @@ const FUENTES = [
   {
     id: "goupc",
     nombre: "Go-UPC",
-    emoji: "🌐",
+    icono: "globe",
     descripcion: "1 billón de productos globales — desde $19.95/mes",
     gratis: false,
     url: "https://go-upc.com",
@@ -60,7 +61,7 @@ const FUENTES = [
   {
     id: "barcodespider",
     nombre: "Barcode Spider",
-    emoji: "🕷️",
+    icono: "spider",
     descripcion: "1 billón de productos, cobertura Asia/Europa/América",
     gratis: false,
     url: "https://www.barcodespider.com",
@@ -144,7 +145,7 @@ export function ConfiguradorBuscadores({
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 flex-1">
-                  <span className="text-2xl">{fuente.emoji}</span>
+                  <div className="h-9 w-9 rounded-lg bg-paper border border-linea flex items-center justify-center shrink-0"><Database size={16} className="text-ink/40" /></div>
                   <div>
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-semibold text-ink">
@@ -203,7 +204,7 @@ export function ConfiguradorBuscadores({
                   />
                   {!cfg.api_key && (
                     <p className="mt-1 text-xs text-amber-600">
-                      ⚠️ Sin API key esta fuente no va a funcionar aunque esté activa.
+                      Sin API key esta fuente no va a funcionar aunque esté activa.
                     </p>
                   )}
                 </div>

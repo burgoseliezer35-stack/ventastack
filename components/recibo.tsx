@@ -217,7 +217,7 @@ ${ticketEl.innerHTML}
         <div className="flex w-full flex-col gap-2" style={{ maxWidth: anchoPx }}>
           <button type="button" onClick={imprimirTicket}
             className="w-full rounded-md bg-primario px-4 py-2 text-sm font-medium text-white transition hover:opacity-90">
-            🖨️ Imprimir / Guardar PDF
+            Imprimir / Guardar PDF
           </button>
           <Link href="/protected/pos" className="text-center text-sm text-primario hover:underline">
             Nueva venta →
