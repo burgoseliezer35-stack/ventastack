@@ -18,7 +18,7 @@ export default async function ReciboPage({
   // Datos base del pedido
   const { data: pedido } = await supabase
     .from("pedidos")
-    .select("id, total, metodo_pago, created_at, vendedor_id, company_id, clientes(nombre)")
+    .select("id, total, metodo_pago, efectivo_recibido, cambio, created_at, vendedor_id, company_id, clientes(nombre)")
     .eq("id", id)
     .single();
 
@@ -131,6 +131,8 @@ export default async function ReciboPage({
       iepsHabilitado={empresa?.ieps_habilitado ?? false}
       iepsPorcentaje={empresa?.ieps_porcentaje ?? 0}
       pieTicket={empresa?.pie_ticket ?? null}
+      efectivoRecibido={(pedido as { efectivo_recibido?: number | null }).efectivo_recibido ?? null}
+      cambio={(pedido as { cambio?: number | null }).cambio ?? null}
     />
   );
 }
