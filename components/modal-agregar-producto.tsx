@@ -3,7 +3,8 @@
 import { imgUrl } from "@/lib/img-proxy";
 import { createClient } from "@/lib/supabase/client";
 import { useState, useRef, useEffect } from "react";
-import { Plus, X, Loader2, CheckCircle, Camera, ImageOff } from "lucide-react";
+import { Plus, X, Loader2, CheckCircle, Camera, ImageOff, ScanLine } from "lucide-react";
+import { EscanerCamara } from "@/components/escaner-camara";
 
 type DatosOFF = {
   nombre: string | null;
@@ -24,6 +25,7 @@ export function ModalAgregarProducto({
   const [noEncontrado, setNoEncontrado] = useState(false);
   const [imagenManual, setImagenManual] = useState<string | null>(null);
   const [codigo, setCodigo] = useState("");
+  const [escanerAbierto, setEscanerAbierto] = useState(false);
   const nombreRef = useRef<HTMLInputElement>(null);
   const imagenUrlRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -134,6 +136,11 @@ export function ModalAgregarProducto({
     }
   };
 
+  const manejarEscaneo = (codigoEscaneado: string) => {
+    setCodigo(codigoEscaneado);
+    setEscanerAbierto(false);
+  };
+
   const cerrar = () => {
     setAbierto(false);
     setSugerencia(null);
@@ -175,18 +182,30 @@ export function ModalAgregarProducto({
                 <label className="block text-xs font-semibold uppercase tracking-wide text-ink/50 mb-1.5">
                   Código de barras
                 </label>
-                <div className="relative">
-                  <input
-                    name="codigo_barras"
-                    type="text"
-                    value={codigo}
-                    onChange={(e) => setCodigo(e.target.value)}
-                    placeholder="Escanea o escribe — buscamos el producto solo"
-                    className="w-full rounded-xl border border-linea px-4 py-3 text-sm text-ink focus:border-primario focus:outline-none focus:ring-2 focus:ring-primario/20 pr-10"
+                {escanerAbierto && (
+                  <EscanerCamara
+                    onEscaneo={manejarEscaneo}
+                    onCerrar={() => setEscanerAbierto(false)}
                   />
-                  {buscando && <Loader2 size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-primario animate-spin" />}
-                  {sugerencia && !buscando && <CheckCircle size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-verde" />}
-                  {noEncontrado && !buscando && <ImageOff size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-ink/30" />}
+                )}
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      name="codigo_barras"
+                      type="text"
+                      value={codigo}
+                      onChange={(e) => setCodigo(e.target.value)}
+                      placeholder="Escribe o escanea con cámara"
+                      className="w-full rounded-xl border border-linea px-4 py-3 text-sm text-ink focus:border-primario focus:outline-none focus:ring-2 focus:ring-primario/20 pr-10"
+                    />
+                    {buscando && <Loader2 size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-primario animate-spin" />}
+                    {sugerencia && !buscando && <CheckCircle size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-verde" />}
+                    {noEncontrado && !buscando && <ImageOff size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-ink/30" />}
+                  </div>
+                  <button type="button" onClick={() => setEscanerAbierto(true)}
+                    className="rounded-xl border border-linea px-3 text-ink/60 hover:border-primario hover:text-primario transition shrink-0">
+                    <ScanLine size={20} />
+                  </button>
                 </div>
               </div>
 

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useMemo, type KeyboardEvent } from "react";
+import { EscanerCamara } from "@/components/escaner-camara";
+import { Camera } from "lucide-react";
 
 type NivelMayoreo = { cantidad_minima: number; precio_unitario: number };
 type Producto = {
@@ -15,6 +17,19 @@ type Producto = {
 export function VerificadorPrecios({ productos }: { productos: Producto[] }) {
   const [busqueda, setBusqueda] = useState("");
   const [seleccionado, setSeleccionado] = useState<Producto | null>(null);
+  const [escanerAbierto, setEscanerAbierto] = useState(false);
+
+  const manejarEscaneo = (codigo: string) => {
+    const producto = productos.find((p) => p.codigo_barras === codigo);
+    if (producto) {
+      setSeleccionado(producto);
+      setBusqueda("");
+      setEscanerAbierto(false);
+    } else {
+      setBusqueda(codigo);
+      setEscanerAbierto(false);
+    }
+  };
 
   const coincidencias = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
@@ -38,23 +53,32 @@ export function VerificadorPrecios({ productos }: { productos: Producto[] }) {
 
   return (
     <div className="flex w-full max-w-sm flex-col gap-4">
+      {escanerAbierto && (
+        <EscanerCamara
+          onEscaneo={manejarEscaneo}
+          onCerrar={() => setEscanerAbierto(false)}
+        />
+      )}
       <div className="rounded-lg border border-linea bg-white p-4">
         <label htmlFor="busqueda" className="text-sm font-medium text-ink">
           Escanea, escribe el código, o busca por nombre
         </label>
-        <input
-          id="busqueda"
-          type="text"
-          autoFocus
-          value={busqueda}
-          onChange={(e) => {
-            setBusqueda(e.target.value);
-            setSeleccionado(null);
-          }}
-          onKeyDown={buscarPorCodigoBarras}
-          placeholder="Refresco, o escanea el código..."
-          className="mt-1 w-full rounded-md border border-linea px-3 py-2 text-ink focus:border-primario focus:outline-none"
-        />
+        <div className="mt-1 flex gap-2">
+          <input
+            id="busqueda"
+            type="text"
+            autoFocus
+            value={busqueda}
+            onChange={(e) => { setBusqueda(e.target.value); setSeleccionado(null); }}
+            onKeyDown={buscarPorCodigoBarras}
+            placeholder="Refresco, o escanea el código..."
+            className="flex-1 rounded-md border border-linea px-3 py-2 text-ink focus:border-primario focus:outline-none"
+          />
+          <button type="button" onClick={() => setEscanerAbierto(true)}
+            className="rounded-md border border-linea px-3 py-2 text-ink/60 hover:border-primario hover:text-primario transition">
+            <Camera size={18} />
+          </button>
+        </div>
       </div>
 
       {!seleccionado && coincidencias.length > 0 && (
