@@ -789,48 +789,98 @@ export function PosForm({
             <label htmlFor="metodoPago" className="mb-1 block text-xs font-medium text-white/80">
               Método de pago
             </label>
-            <select
-              id="metodoPago"
-              value={metodoPago}
-              onChange={(e) => {
-                setMetodoPago(e.target.value);
-                setEfectivoRecibido("");
-              }}
-              className="w-full rounded-md border border-white/20 bg-white/10 px-3 py-2 text-sm text-white outline-none [&>option]:text-ink"
-            >
-              <option value="efectivo">Efectivo</option>
-              <option value="transferencia">Transferencia</option>
-              <option value="credito">Crédito</option>
-            </select>
+            {/* Botones de método de pago */}
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { val: "efectivo", label: "Efectivo" },
+                { val: "tarjeta", label: "Tarjeta" },
+                { val: "transferencia", label: "Transferencia" },
+                { val: "credito", label: "Crédito" },
+              ].map(({ val, label }) => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => { setMetodoPago(val); setEfectivoRecibido(""); }}
+                  className={`rounded-lg py-2 text-sm font-semibold transition border ${
+                    metodoPago === val
+                      ? "bg-white text-primario border-white"
+                      : "bg-white/10 text-white border-white/20 hover:bg-white/20"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
 
+          {/* Efectivo — cuánto paga y cambio */}
           {metodoPago === "efectivo" && (
-            <div>
-              <label htmlFor="efectivoRecibido" className="mb-1 block text-xs font-medium text-white/80">
-                Efectivo recibido
-              </label>
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-medium text-white/80">Efectivo recibido</label>
+              {/* Botones rápidos de billetes */}
+              <div className="grid grid-cols-4 gap-1.5">
+                {[50, 100, 200, 500].map((billete) => (
+                  <button key={billete} type="button"
+                    onClick={() => setEfectivoRecibido(String(billete))}
+                    className={`rounded-md py-1.5 text-xs font-bold border transition ${
+                      Number(efectivoRecibido) === billete
+                        ? "bg-white text-primario border-white"
+                        : "bg-white/10 text-white border-white/20 hover:bg-white/20"
+                    }`}>
+                    ${billete}
+                  </button>
+                ))}
+              </div>
               <input
-                id="efectivoRecibido"
                 type="number"
                 min={0}
                 step="0.01"
                 value={efectivoRecibido}
                 onChange={(e) => setEfectivoRecibido(e.target.value)}
-                placeholder={total > 0 ? total.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}) : "0.00"}
+                placeholder={total > 0 ? total.toLocaleString("en-US", { minimumFractionDigits: 2 }) : "0.00"}
                 className="w-full rounded-md border border-white/20 bg-white/10 px-3 py-2 text-sm text-white outline-none placeholder:text-white/40"
               />
               {cambio !== null && (
-                <div
-                  className={`mt-2 flex justify-between rounded-md px-3 py-2 text-sm ${
-                    faltaEfectivo ? "bg-red-500/30" : "bg-white/15"
-                  }`}
-                >
-                  <span>{faltaEfectivo ? "Falta" : "Cambio"}</span>
-                  <span className="cifra font-bold">
-                    ${Math.abs(cambio).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}
-                  </span>
+                <div className={`rounded-xl px-4 py-3 ${faltaEfectivo ? "bg-red-500/40" : "bg-white/20"}`}>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-white">
+                      {faltaEfectivo ? "Falta" : "Cambio"}
+                    </span>
+                    <span className={`cifra text-xl font-bold ${faltaEfectivo ? "text-red-200" : "text-white"}`}>
+                      ${Math.abs(cambio).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  {!faltaEfectivo && cambio > 0 && (
+                    <p className="text-xs text-white/60 mt-0.5">Entregar al cliente</p>
+                  )}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Tarjeta — solo confirmación */}
+          {metodoPago === "tarjeta" && (
+            <div className="rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-center">
+              <p className="text-sm font-semibold text-white">Pago con tarjeta</p>
+              <p className="text-xs text-white/60 mt-0.5">
+                Cobra ${total.toLocaleString("en-US", { minimumFractionDigits: 2 })} en tu terminal y confirma aquí
+              </p>
+            </div>
+          )}
+
+          {/* Transferencia */}
+          {metodoPago === "transferencia" && (
+            <div className="rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-center">
+              <p className="text-sm font-semibold text-white">Transferencia / OXXO Pay</p>
+              <p className="text-xs text-white/60 mt-0.5">Confirma que recibiste el pago antes de cobrar</p>
+            </div>
+          )}
+
+          {/* Crédito */}
+          {metodoPago === "credito" && (
+            <div className="rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-center">
+              <p className="text-sm font-semibold text-white">Venta a crédito</p>
+              <p className="text-xs text-white/60 mt-0.5">Se registra como cuenta por cobrar</p>
             </div>
           )}
 
