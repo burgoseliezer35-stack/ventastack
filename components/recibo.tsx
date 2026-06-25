@@ -69,12 +69,18 @@ export function Recibo({
     }
   }
   if (iepsHabilitado && iepsPorcentaje > 0) {
-    montoIeps = baseGravable * (iepsPorcentaje / 100);
-    totalFinal = ivaIncluido ? total + montoIeps : baseGravable + montoIva + montoIeps;
+    montoIeps = Math.round(baseGravable * (iepsPorcentaje / 100) * 100) / 100;
+    totalFinal = ivaIncluido
+      ? Math.round((total + montoIeps) * 100) / 100
+      : Math.round((baseGravable + montoIva + montoIeps) * 100) / 100;
   }
+  // Redondear todos los montos a 2 decimales
+  baseGravable = Math.round(baseGravable * 100) / 100;
+  montoIva = Math.round(montoIva * 100) / 100;
+  totalFinal = Math.round(totalFinal * 100) / 100;
 
   useEffect(() => {
-    QRCode.toDataURL(`Ventastack\nFolio: ${folio}\nTotal: $${totalFinal.toFixed(2)}`, { width: 120, margin: 1 })
+    QRCode.toDataURL(`${process.env.NEXT_PUBLIC_APP_URL ?? "https://ventastack.vercel.app"}/factura/${folio}`, { width: 120, margin: 1 })
       .then(setQrDataUrl)
       .catch(() => setQrDataUrl(null));
   }, [folio, totalFinal]);
@@ -116,7 +122,7 @@ export function Recibo({
         {renglones.map((r, i) => (
           <div key={i} style={{ display: "flex", justifyContent: "space-between", marginBottom: 2, fontSize: 11 }}>
             <span>{r.cantidad} x {r.nombre}</span>
-            <span>${r.subtotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+            <span>${r.subtotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </div>
         ))}
       </div>
@@ -126,18 +132,18 @@ export function Recibo({
         {/* Subtotal e impuestos */}
         <div style={{ display: "flex", justifyContent: "space-between" }}>
           <span>Subtotal</span>
-          <span>${baseGravable.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+          <span>${baseGravable.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </div>
         {tieneIva && (
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <span>IVA {ivaPorcentaje}%</span>
-            <span>${montoIva.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+            <span>${montoIva.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </div>
         )}
         {iepsHabilitado && montoIeps > 0 && (
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <span>IEPS {iepsPorcentaje}%</span>
-            <span>${montoIeps.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+            <span>${montoIeps.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </div>
         )}
 
@@ -145,20 +151,20 @@ export function Recibo({
         {efectivoRecibido != null && (
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 2 }}>
             <span>Efectivo recibido</span>
-            <span>${efectivoRecibido.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+            <span>${efectivoRecibido.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </div>
         )}
         {cambio != null && cambio > 0 && (
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <span>Cambio</span>
-            <span>${cambio.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+            <span>${cambio.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </div>
         )}
 
         {/* Línea separadora antes del TOTAL */}
         <div style={{ borderTop: "1px solid #333", marginTop: 4, paddingTop: 4, display: "flex", justifyContent: "space-between", fontWeight: "bold", fontSize: 13 }}>
           <span>TOTAL</span>
-          <span>${totalFinal.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+          <span>${totalFinal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </div>
       </div>
 
