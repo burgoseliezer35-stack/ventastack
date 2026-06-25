@@ -148,11 +148,19 @@ export function Recibo({
         <div style={{ textAlign: "center", borderTop: "1px dashed #999", paddingTop: 6 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={qrDataUrl} alt="QR" width={90} height={90} style={{ margin: "0 auto" }} />
-          <div style={{ fontSize: 9, color: "#666", marginTop: 4, textAlign: "center", whiteSpace: "pre-line" }}>
-            {pieTicket || "Gracias por tu compra"}
-          </div>
         </div>
       )}
+
+      {/* Pie de ticket — siempre visible */}
+      <div style={{ borderTop: "1px dashed #999", padding: "6px 0", textAlign: "center" }}>
+        {pieTicket ? (
+          <div style={{ fontSize: 9, color: "#444", whiteSpace: "pre-line", lineHeight: 1.5 }}>
+            {pieTicket}
+          </div>
+        ) : (
+          <div style={{ fontSize: 9, color: "#888" }}>Gracias por tu compra</div>
+        )}
+      </div>
     </>
   );
 
