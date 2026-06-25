@@ -430,12 +430,17 @@ export function PosForm({
       return;
     }
 
+    const efectivoNum = efectivoRecibido !== "" ? Number(efectivoRecibido) : null;
+    const cambioNum = cambio !== null && cambio >= 0 ? cambio : null;
+
     const { data: pedidoId, error: rpcError } = await supabase.rpc(
       "crear_pedido_con_detalle",
       {
         p_cliente_id: clienteId || null,
         p_origen: "pos",
         p_metodo_pago: metodoPago,
+        p_efectivo_recibido: efectivoNum,
+        p_cambio: cambioNum,
         p_items: carrito.map((i) => ({
           producto_id: i.producto_id,
           cantidad: i.cantidad,
@@ -832,26 +837,29 @@ export function PosForm({
                 ))}
               </div>
               <input
-                type="number"
-                min={0}
-                step="0.01"
+                type="text"
+                inputMode="decimal"
                 value={efectivoRecibido}
-                onChange={(e) => setEfectivoRecibido(e.target.value)}
-                placeholder={total > 0 ? total.toLocaleString("en-US", { minimumFractionDigits: 2 }) : "0.00"}
-                className="w-full rounded-md border border-white/20 bg-white/10 px-3 py-2 text-sm text-white outline-none placeholder:text-white/40"
+                onChange={(e) => {
+                  // Solo permitir números y punto decimal
+                  const val = e.target.value.replace(/[^0-9.]/g, "");
+                  setEfectivoRecibido(val);
+                }}
+                placeholder={total > 0 ? `$${total.toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "$0.00"}
+                className="w-full rounded-md border border-white/20 bg-white/10 px-3 py-2 text-lg font-bold text-white outline-none placeholder:text-white/40"
               />
               {cambio !== null && (
-                <div className={`rounded-xl px-4 py-3 ${faltaEfectivo ? "bg-red-500/40" : "bg-white/20"}`}>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-white">
-                      {faltaEfectivo ? "Falta" : "Cambio"}
-                    </span>
-                    <span className={`cifra text-xl font-bold ${faltaEfectivo ? "text-red-200" : "text-white"}`}>
-                      ${Math.abs(cambio).toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                  {!faltaEfectivo && cambio > 0 && (
-                    <p className="text-xs text-white/60 mt-0.5">Entregar al cliente</p>
+                <div className={`rounded-xl px-4 py-4 ${faltaEfectivo ? "bg-red-500/40" : "bg-white/25"}`}>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-white/70 mb-1">
+                    {faltaEfectivo ? "Falta cobrar" : "Cambio al cliente"}
+                  </p>
+                  <p className={`cifra text-3xl font-bold tracking-tight ${faltaEfectivo ? "text-red-200" : "text-white"}`}>
+                    ${Math.abs(cambio).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                  </p>
+                  {!faltaEfectivo && Number(efectivoRecibido) > 0 && (
+                    <p className="text-xs text-white/60 mt-1">
+                      Recibido: ${Number(efectivoRecibido).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                    </p>
                   )}
                 </div>
               )}

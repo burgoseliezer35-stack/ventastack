@@ -34,13 +34,15 @@ type ReciboProps = {
   iepsPorcentaje: number;
   anchoMm?: number;
   pieTicket?: string | null;
+  efectivoRecibido?: number | null;
+  cambio?: number | null;
 };
 
 export function Recibo({
   pedidoId, empresa, logoUrl, razonSocial, rfc, direccion, telefono,
   cliente, metodoPago, total, fecha, renglones, atendidoPor,
   ivaPorcentaje, ivaIncluido, iepsHabilitado, iepsPorcentaje,
-  anchoMm = 72, pieTicket,
+  anchoMm = 72, pieTicket, efectivoRecibido, cambio,
 }: ReciboProps) {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [ancho, setAncho] = useState<Ancho>(
@@ -106,6 +108,12 @@ export function Recibo({
       <div style={{ borderTop: "1px dashed #999", padding: "4px 0", fontSize: 10 }}>
         <div>Cliente: {cliente}</div>
         <div>Pago: {metodoPago}</div>
+        {efectivoRecibido != null && (
+          <div>Recibido: ${efectivoRecibido.toLocaleString("en-US", { minimumFractionDigits: 2 })}</div>
+        )}
+        {cambio != null && cambio > 0 && (
+          <div style={{ fontWeight: "bold" }}>Cambio: ${cambio.toLocaleString("en-US", { minimumFractionDigits: 2 })}</div>
+        )}
         {atendidoPor && <div>Atendió: {atendidoPor}</div>}
       </div>
 
