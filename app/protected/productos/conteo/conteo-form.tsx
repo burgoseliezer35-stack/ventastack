@@ -28,11 +28,11 @@ export function ConteoFisico({ productos }: { productos: Producto[] }) {
   const manejarEscaneo = (codigo: string) => {
     const producto = productos.find((p) => p.codigo_barras === codigo);
     if (!producto) {
-      setUltimoEscaneado(`Código no encontrado: ${codigo}`);
+      setUltimoEscaneado(`❌ Código no encontrado: ${codigo}`);
       return;
     }
     agregarConteo(producto);
-    setUltimoEscaneado(`Encontrado: ${producto.nombre}`);
+    setUltimoEscaneado(`✓ ${producto.nombre}`);
     setTimeout(() => setUltimoEscaneado(null), 2000);
   };
 
@@ -120,7 +120,7 @@ export function ConteoFisico({ productos }: { productos: Producto[] }) {
           {/* Último escaneado */}
           {ultimoEscaneado && (
             <div className={`rounded-xl px-4 py-3 text-sm font-medium text-center ${
-              ultimoEscaneado.startsWith("Código no") ? "bg-red-50 text-red-700 border border-red-200" : "bg-verde-suave text-verde border border-verde/30"
+              ultimoEscaneado.startsWith("❌") ? "bg-red-50 text-red-700 border border-red-200" : "bg-verde-suave text-verde border border-verde/30"
             }`}>
               {ultimoEscaneado}
             </div>
@@ -158,7 +158,7 @@ export function ConteoFisico({ productos }: { productos: Producto[] }) {
                           <img src={imgUrl(producto.imagen_url) ?? ""} alt={producto.nombre}
                             className="h-full w-full object-contain" />
                         ) : (
-                          <div className="h-full w-full flex items-center justify-center"><Package size={16} className="text-ink/30" /></div>
+                          <div className="h-full w-full flex items-center justify-center text-lg">📦</div>
                         )}
                       </div>
 
@@ -167,7 +167,7 @@ export function ConteoFisico({ productos }: { productos: Producto[] }) {
                         <p className="text-sm font-medium text-ink truncate">{producto.nombre}</p>
                         <p className={`text-xs ${diferencia === 0 ? "text-verde" : diferencia > 0 ? "text-amber-600" : "text-red-500"}`}>
                           Sistema: {producto.stock} →{" "}
-                          {diferencia === 0 ? "Correcto" : diferencia > 0 ? `+${diferencia} sobrante` : `${diferencia} faltante`}
+                          {diferencia === 0 ? "✓ Correcto" : diferencia > 0 ? `+${diferencia} sobrante` : `${diferencia} faltante`}
                         </p>
                       </div>
 
@@ -296,7 +296,7 @@ export function ConteoFisico({ productos }: { productos: Producto[] }) {
             <div className="rounded-xl border border-amber-200 bg-white overflow-hidden">
               <div className="px-4 py-3 border-b border-linea bg-amber-50">
                 <p className="text-sm font-semibold text-amber-800">
-                  {noContados.length} sin escanear
+                  ⚠️ {noContados.length} sin escanear
                 </p>
               </div>
               <ul className="divide-y divide-linea">

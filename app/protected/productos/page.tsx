@@ -80,7 +80,7 @@ export default async function ProductosPage({
             href="/protected/productos/conteo"
             className="flex items-center gap-1.5 text-sm text-primario hover:underline"
           >
-            Conteo físico
+            🔢 Conteo físico
           </Link>
           <Link
             href="/protected/productos/categorias"
