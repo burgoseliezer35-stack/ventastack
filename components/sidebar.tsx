@@ -67,6 +67,12 @@ export function Sidebar({ nombre, rol, esAdmin, esVendedor, nombreEmpresa, tipoN
     },
     {
       tipo: "enlace",
+      href: "/protected/facturas",
+      etiqueta: "Facturas CFDI",
+      Icono: FileText,
+    },
+    {
+      tipo: "enlace",
       href: "/protected/verificador",
       etiqueta: "Verificador de precios",
       Icono: ScanLine,
