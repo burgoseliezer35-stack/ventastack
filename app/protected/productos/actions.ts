@@ -15,23 +15,20 @@ export async function crearProducto(formData: FormData) {
   const codigoBarras = (formData.get("codigo_barras") as string)?.trim() || null;
   const imagenUrl = (formData.get("imagen_url") as string)?.trim() || null;
 
-  if (!nombre || !Number.isFinite(precio) || precio <= 0) {
-    return;
-  }
+  if (!nombre || !Number.isFinite(precio) || precio <= 0) return;
 
-  const { error } = await supabase
-    .from("productos")
-    .insert({
-      nombre, precio, costo,
-      stock: stockInicial,
-      categoria_id: categoriaId,
-      codigo_barras: codigoBarras,
-      imagen_url: imagenUrl,
-    });
+  // Usar RPC para que el stock inicial quede registrado en el kardex
+  const { error } = await supabase.rpc("crear_producto_con_stock", {
+    p_nombre: nombre,
+    p_precio: precio,
+    p_costo: costo,
+    p_stock_inicial: stockInicial,
+    p_codigo_barras: codigoBarras,
+    p_imagen_url: imagenUrl,
+    p_categoria_id: categoriaId || null,
+  });
 
   if (error) {
-    // El error más probable aquí: ese código de barras ya lo tiene
-    // otro producto de tu catálogo.
     redirect(`/protected/productos?error=${encodeURIComponent(error.message)}`);
   }
 
@@ -40,23 +37,12 @@ export async function crearProducto(formData: FormData) {
 
 export async function desactivarProducto(productoId: string) {
   const supabase = await createClient();
-
-  // No borramos la fila de verdad: si ese producto ya se vendió
-  // alguna vez, borrarlo de verdad rompería el historial de esas
-  // ventas. Solo lo "apagamos".
-  await supabase
-    .from("productos")
-    .update({ activo: false })
-    .eq("id", productoId);
-
+  await supabase.from("productos").update({ activo: false }).eq("id", productoId);
   revalidatePath("/protected/productos");
 }
 
 export async function reactivarProducto(productoId: string) {
   const supabase = await createClient();
-  await supabase
-    .from("productos")
-    .update({ activo: true })
-    .eq("id", productoId);
+  await supabase.from("productos").update({ activo: true }).eq("id", productoId);
   revalidatePath("/protected/productos");
 }
