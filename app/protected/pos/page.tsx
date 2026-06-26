@@ -21,7 +21,7 @@ export default async function PosPage() {
 
   const { data: empresa } = await supabase
     .from("companies")
-    .select("iva_porcentaje, iva_incluido")
+    .select("iva_porcentaje, iva_incluido, ieps_habilitado, ieps_porcentaje")
     .eq("id", miPerfil?.company_id)
     .single();
 
@@ -59,6 +59,8 @@ export default async function PosPage() {
           geminiDisponible={geminiDisponible()}
           ivaPorcentaje={empresa?.iva_porcentaje ?? 0}
           ivaIncluido={empresa?.iva_incluido ?? true}
+          iepsHabilitado={empresa?.ieps_habilitado ?? false}
+          iepsPorcentaje={empresa?.ieps_porcentaje ?? 0}
           companyId={miPerfil?.company_id ?? ""}
         />
       ) : (
