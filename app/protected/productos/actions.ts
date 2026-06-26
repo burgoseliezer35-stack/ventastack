@@ -9,6 +9,8 @@ export async function crearProducto(formData: FormData) {
 
   const nombre = (formData.get("nombre") as string)?.trim();
   const precio = Number(formData.get("precio"));
+  const costo = Number(formData.get("costo")) || 0;
+  const stockInicial = Number(formData.get("stock_inicial")) || 0;
   const categoriaId = (formData.get("categoria_id") as string) || null;
   const codigoBarras = (formData.get("codigo_barras") as string)?.trim() || null;
   const imagenUrl = (formData.get("imagen_url") as string)?.trim() || null;
@@ -19,7 +21,13 @@ export async function crearProducto(formData: FormData) {
 
   const { error } = await supabase
     .from("productos")
-    .insert({ nombre, precio, categoria_id: categoriaId, codigo_barras: codigoBarras, imagen_url: imagenUrl });
+    .insert({
+      nombre, precio, costo,
+      stock: stockInicial,
+      categoria_id: categoriaId,
+      codigo_barras: codigoBarras,
+      imagen_url: imagenUrl,
+    });
 
   if (error) {
     // El error más probable aquí: ese código de barras ya lo tiene
