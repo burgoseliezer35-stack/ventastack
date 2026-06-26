@@ -7,39 +7,134 @@ export default async function AuditoriaPage() {
   const { data, error } = await supabase.auth.getClaims();
   if (error || !data?.claims) redirect("/auth/login");
 
-  const userId = data.claims.sub as string;
   const { data: miPerfil } = await supabase
     .from("profiles")
-    .select("role")
-    .eq("id", userId)
+    .select("role, company_id")
+    .eq("id", data.claims.sub as string)
     .single();
 
   if (miPerfil?.role !== "admin") redirect("/protected");
 
-  const { data: bitacora } = await supabase
-    .from("bitacora_auditoria")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(100);
+  const [{ data: bitacora }, { data: cortes }, { data: kardex }] = await Promise.all([
+    supabase
+      .from("bitacora_auditoria")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(100),
+    supabase
+      .from("cortes_turno")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(50),
+    supabase
+      .from("movimientos_inventario")
+      .select(`
+        id, tipo, cantidad, motivo, nota, created_at,
+        stock_antes, stock_despues,
+        productos(nombre),
+        profiles(full_name)
+      `)
+      .eq("company_id", miPerfil.company_id)
+      .order("created_at", { ascending: false })
+      .limit(200),
+  ]);
 
-  const { data: cortes } = await supabase
-    .from("cortes_turno")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(50);
+  const MOTIVO_COLOR: Record<string, string> = {
+    venta:     "bg-blue-100 text-blue-700",
+    compra:    "bg-green-100 text-green-700",
+    ajuste:    "bg-amber-100 text-amber-700",
+    devolucion:"bg-purple-100 text-purple-700",
+    merma:     "bg-red-100 text-red-700",
+    transferencia: "bg-cyan-100 text-cyan-700",
+  };
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-xl font-bold text-ink">Auditoría</h1>
-        <p className="text-sm text-ink/60">
-          Solo visible para el administrador. Registra acciones sensibles y cortes de turno.
+        <p className="text-sm text-ink/50">
+          Solo visible para el administrador. Registra movimientos de inventario, cortes y acciones sensibles.
         </p>
       </div>
 
-      {/* Cortes de turno */}
+      {/* ── Kardex de inventario ─────────────────────────────── */}
       <div className="overflow-hidden rounded-xl border border-linea bg-white shadow-sm">
-        <div className="border-b border-linea bg-primario-suave px-4 py-3">
+        <div className="border-b border-linea bg-primario-suave px-5 py-3 flex items-center justify-between">
+          <div>
+            <h2 className="font-semibold text-ink">Kardex de inventario</h2>
+            <p className="text-xs text-ink/50 mt-0.5">
+              Historial inmutable de todos los movimientos de stock con saldo antes y después
+            </p>
+          </div>
+          <span className="text-xs text-ink/40">{kardex?.length ?? 0} movimientos</span>
+        </div>
+        {kardex?.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-primario text-left text-xs font-semibold uppercase tracking-wide text-white">
+                  <th className="px-4 py-2.5">Fecha/Hora</th>
+                  <th className="px-4 py-2.5">Producto</th>
+                  <th className="px-4 py-2.5">Movimiento</th>
+                  <th className="px-4 py-2.5 text-right">Cantidad</th>
+                  <th className="px-4 py-2.5 text-right">Stock antes</th>
+                  <th className="px-4 py-2.5 text-right">Stock después</th>
+                  <th className="px-4 py-2.5">Registró</th>
+                  <th className="px-4 py-2.5">Nota</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-linea">
+                {kardex.map((m, idx) => {
+                  const producto = Array.isArray(m.productos) ? m.productos[0] : m.productos;
+                  const perfil = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
+                  const esEntrada = m.tipo === "entrada";
+                  const tieneStock = m.stock_antes != null && m.stock_despues != null;
+                  return (
+                    <tr key={m.id} className={idx % 2 === 1 ? "bg-paper/60" : ""}>
+                      <td className="px-4 py-2.5 text-xs text-ink/60 whitespace-nowrap">
+                        {new Date(m.created_at).toLocaleString("es-MX", {
+                          dateStyle: "short", timeStyle: "short"
+                        })}
+                      </td>
+                      <td className="px-4 py-2.5 font-medium text-ink max-w-[180px] truncate">
+                        {producto?.nombre ?? "—"}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${MOTIVO_COLOR[m.motivo] ?? "bg-gray-100 text-gray-600"}`}>
+                          {m.motivo}
+                        </span>
+                      </td>
+                      <td className={`cifra px-4 py-2.5 text-right font-bold ${esEntrada ? "text-verde" : "text-red-500"}`}>
+                        {esEntrada ? "+" : "-"}{m.cantidad}
+                      </td>
+                      <td className="cifra px-4 py-2.5 text-right text-ink/60">
+                        {tieneStock ? m.stock_antes : <span className="text-ink/30 text-xs">—</span>}
+                      </td>
+                      <td className="cifra px-4 py-2.5 text-right font-semibold text-ink">
+                        {tieneStock ? m.stock_despues : <span className="text-ink/30 text-xs">—</span>}
+                      </td>
+                      <td className="px-4 py-2.5 text-xs text-ink/60">
+                        {perfil?.full_name ?? "—"}
+                      </td>
+                      <td className="px-4 py-2.5 text-xs text-ink/50 max-w-[150px] truncate">
+                        {m.nota ?? "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="px-4 py-8 text-center text-sm text-ink/40">
+            Sin movimientos de inventario todavía.
+          </p>
+        )}
+      </div>
+
+      {/* ── Cortes de turno ──────────────────────────────────── */}
+      <div className="overflow-hidden rounded-xl border border-linea bg-white shadow-sm">
+        <div className="border-b border-linea bg-primario-suave px-5 py-3">
           <h2 className="font-semibold text-ink">Cortes de turno</h2>
         </div>
         {cortes?.length ? (
@@ -63,10 +158,10 @@ export default async function AuditoriaPage() {
                   return (
                     <tr key={c.id} className={idx % 2 === 1 ? "bg-paper/60" : ""}>
                       <td className="px-4 py-2.5 text-ink">{c.cajero_nombre ?? "—"}</td>
-                      <td className="px-4 py-2.5 text-ink/60 text-xs">
+                      <td className="px-4 py-2.5 text-ink/60 text-xs whitespace-nowrap">
                         {new Date(c.turno_inicio).toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" })}
                       </td>
-                      <td className="px-4 py-2.5 text-ink/60 text-xs">
+                      <td className="px-4 py-2.5 text-ink/60 text-xs whitespace-nowrap">
                         {c.turno_fin ? new Date(c.turno_fin).toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" }) : "—"}
                       </td>
                       <td className="cifra px-4 py-2.5 text-right text-ink">
@@ -86,7 +181,9 @@ export default async function AuditoriaPage() {
                           : "—"}
                       </td>
                       <td className="px-4 py-2.5">
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${c.estado === "abierto" ? "bg-primario-suave text-primario" : "bg-verde-suave text-verde"}`}>
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                          c.estado === "abierto" ? "bg-primario-suave text-primario" : "bg-verde-suave text-verde"
+                        }`}>
                           {c.estado}
                         </span>
                       </td>
@@ -101,9 +198,9 @@ export default async function AuditoriaPage() {
         )}
       </div>
 
-      {/* Bitácora de acciones */}
+      {/* ── Bitácora de acciones sensibles ───────────────────── */}
       <div className="overflow-hidden rounded-xl border border-linea bg-white shadow-sm">
-        <div className="border-b border-linea bg-primario-suave px-4 py-3">
+        <div className="border-b border-linea bg-primario-suave px-5 py-3">
           <h2 className="font-semibold text-ink">Bitácora de acciones sensibles</h2>
         </div>
         {bitacora?.length ? (
@@ -120,7 +217,7 @@ export default async function AuditoriaPage() {
               <tbody className="divide-y divide-linea">
                 {bitacora.map((b, idx) => (
                   <tr key={b.id} className={idx % 2 === 1 ? "bg-paper/60" : ""}>
-                    <td className="px-4 py-2.5 text-xs text-ink/60">
+                    <td className="px-4 py-2.5 text-xs text-ink/60 whitespace-nowrap">
                       {new Date(b.created_at).toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" })}
                     </td>
                     <td className="px-4 py-2.5 text-ink">{b.usuario_nombre ?? "—"}</td>
