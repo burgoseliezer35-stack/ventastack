@@ -7,7 +7,7 @@ import { EscanerCamara } from "@/components/escaner-camara";
 import { ScanLine, Plus, Trash2, AlertTriangle, CheckCircle } from "lucide-react";
 
 type Proveedor = { id: string; nombre: string };
-type Producto = { id: string; nombre: string; costo: number; ieps_porcentaje?: number };
+type Producto = { id: string; nombre: string; costo: number; ieps_porcentaje?: number; imagen_url?: string | null };
 
 type ItemCompra = {
   producto_id: string;
@@ -231,8 +231,19 @@ export function CompraForm({
               <div className="absolute z-10 w-full mt-1 bg-white border border-linea rounded-lg shadow-lg max-h-40 overflow-y-auto">
                 {productosFiltrados.slice(0, 6).map((p) => (
                   <button key={p.id} type="button" onClick={() => seleccionarProducto(p)}
-                    className="w-full text-left px-3 py-2 text-sm text-ink hover:bg-paper transition">
-                    {p.nombre}
+                    className="w-full text-left px-3 py-2 text-sm text-ink hover:bg-paper transition flex items-center gap-2">
+                    {p.imagen_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={`/api/img?url=${encodeURIComponent(p.imagen_url)}`}
+                        alt={p.nombre}
+                        className="h-8 w-8 rounded object-cover border border-linea shrink-0"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      />
+                    ) : (
+                      <div className="h-8 w-8 rounded bg-paper border border-linea shrink-0" />
+                    )}
+                    <span className="truncate">{p.nombre}</span>
                   </button>
                 ))}
               </div>
@@ -245,9 +256,24 @@ export function CompraForm({
         </div>
 
         {productoSeleccionado && (
-          <div className="mb-3 rounded-lg bg-primario/5 border border-primario/20 px-3 py-2">
-            <p className="text-xs font-semibold text-primario">{productoSeleccionado.nombre}</p>
-            <p className="text-xs text-ink/50">Costo actual: ${productoSeleccionado.costo.toFixed(2)}</p>
+          <div className="mb-3 rounded-lg bg-primario/5 border border-primario/20 px-3 py-2 flex items-center gap-3">
+            {productoSeleccionado.imagen_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={`/api/img?url=${encodeURIComponent(productoSeleccionado.imagen_url)}`}
+                alt={productoSeleccionado.nombre}
+                className="h-12 w-12 rounded-lg object-cover border border-linea shrink-0"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+              />
+            ) : (
+              <div className="h-12 w-12 rounded-lg bg-primario/10 border border-primario/20 flex items-center justify-center shrink-0">
+                <span className="text-xs text-primario/40">📦</span>
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-primario truncate">{productoSeleccionado.nombre}</p>
+              <p className="text-xs text-ink/50">Costo actual: ${productoSeleccionado.costo.toFixed(2)}</p>
+            </div>
           </div>
         )}
 
