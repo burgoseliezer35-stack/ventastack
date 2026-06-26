@@ -43,6 +43,8 @@ export function PosForm({
   geminiDisponible,
   ivaPorcentaje = 0,
   ivaIncluido = true,
+  iepsHabilitado = false,
+  iepsPorcentaje = 0,
   companyId = "",
 }: {
   productos: Producto[];
@@ -50,6 +52,8 @@ export function PosForm({
   geminiDisponible: boolean;
   ivaPorcentaje?: number;
   ivaIncluido?: boolean;
+  iepsHabilitado?: boolean;
+  iepsPorcentaje?: number;
   companyId?: string;
 }) {
   const [carrito, setCarritoRaw] = useState<ItemCarrito[]>(() => {
@@ -358,24 +362,31 @@ export function PosForm({
     0,
   );
 
-  // Cálculo de IVA según configuración de la empresa
-  const tieneIva = ivaPorcentaje > 0;
+  // Cálculo de impuestos — mismo orden que el recibo (SAT México)
+  // Orden: Base → IEPS → IVA sobre (Base + IEPS)
+  const r2 = (n: number) => Math.round(n * 100) / 100;
   let baseGravable = 0;
   let montoIva = 0;
+  let montoIepsPOS = 0;
   let total = subtotal;
 
-  if (tieneIva) {
-    if (ivaIncluido) {
-      // El precio ya incluye IVA — desglosamos para el recibo
-      baseGravable = subtotal / (1 + ivaPorcentaje / 100);
-      montoIva = subtotal - baseGravable;
-      total = subtotal; // el total no cambia
-    } else {
-      // El precio no incluye IVA — se agrega al cobrar
-      baseGravable = subtotal;
-      montoIva = subtotal * (ivaPorcentaje / 100);
-      total = subtotal + montoIva;
-    }
+  if (ivaIncluido) {
+    // Precios ya incluyen IVA (y posiblemente IEPS)
+    const factorTotal = 1
+      + (ivaPorcentaje / 100)
+      + (iepsHabilitado ? iepsPorcentaje / 100 : 0)
+      + (iepsHabilitado ? (iepsPorcentaje / 100) * (ivaPorcentaje / 100) : 0);
+    baseGravable = r2(subtotal / factorTotal);
+    montoIepsPOS = iepsHabilitado ? r2(baseGravable * (iepsPorcentaje / 100)) : 0;
+    montoIva = r2((baseGravable + montoIepsPOS) * (ivaPorcentaje / 100));
+    total = subtotal; // precio ya incluye todo
+  } else {
+    // Precios sin impuestos — agregar IEPS primero, luego IVA sobre (base + IEPS)
+    baseGravable = subtotal;
+    montoIepsPOS = iepsHabilitado ? r2(baseGravable * (iepsPorcentaje / 100)) : 0;
+    const baseConIeps = r2(baseGravable + montoIepsPOS);
+    montoIva = ivaPorcentaje > 0 ? r2(baseConIeps * (ivaPorcentaje / 100)) : 0;
+    total = r2(baseConIeps + montoIva);
   }
 
   // Solo tiene sentido cuando el cajero de verdad escribió un
@@ -758,7 +769,7 @@ export function PosForm({
           <div>
             <p className="text-xs uppercase tracking-wide text-white/70">Total a cobrar</p>
             <p className="cifra text-3xl font-bold">${total.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</p>
-            {tieneIva && (
+            {ivaPorcentaje > 0 && (
               <div className="mt-1 text-xs text-white/70 space-y-0.5">
                 <div className="flex justify-between">
                   <span>Subtotal{ivaIncluido ? " (IVA incl.)" : ""}:</span>
