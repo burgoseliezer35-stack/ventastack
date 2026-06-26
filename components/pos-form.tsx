@@ -394,7 +394,7 @@ export function PosForm({
   // veces el pago es exacto y no hace falta calcular nada).
   const cambio =
     metodoPago === "efectivo" && efectivoRecibido !== ""
-      ? Number(efectivoRecibido) - total
+      ? r2(Number(efectivoRecibido) - total)
       : null;
   const faltaEfectivo = cambio !== null && cambio < 0;
 
@@ -779,6 +779,12 @@ export function PosForm({
                   <span>IVA {ivaPorcentaje}%:</span>
                   <span className="cifra">${montoIva.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
                 </div>
+                {iepsHabilitado && montoIepsPOS > 0 && (
+                  <div className="flex justify-between">
+                    <span>IEPS {iepsPorcentaje}%:</span>
+                    <span className="cifra">${montoIepsPOS.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -866,7 +872,7 @@ export function PosForm({
                     {faltaEfectivo ? "Falta cobrar" : "Cambio al cliente"}
                   </p>
                   <p className={`cifra text-3xl font-bold tracking-tight ${faltaEfectivo ? "text-red-200" : "text-white"}`}>
-                    ${Math.abs(cambio).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                    ${Math.abs(cambio).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
                   {!faltaEfectivo && Number(efectivoRecibido) > 0 && (
                     <p className="text-xs text-white/60 mt-1">
