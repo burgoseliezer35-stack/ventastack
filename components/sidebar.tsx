@@ -137,7 +137,7 @@ export function Sidebar({ nombre, rol, esAdmin, esVendedor, nombreEmpresa, tipoN
       etiqueta: "Compras",
       Icono: Truck,
       items: [
-        { href: "/protected/compras/recibir", etiqueta: "Recibir mercancía" },
+        { href: "/protected/compras/nueva", etiqueta: "Recibir mercancía" },
         { href: "/protected/compras", etiqueta: "Historial" },
         { href: "/protected/proveedores", etiqueta: "Proveedores" },
       ],
