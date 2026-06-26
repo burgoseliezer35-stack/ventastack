@@ -80,10 +80,16 @@ export default async function DetalleFacturaPage({
           ))}
         </div>
         {cf?.constancia_url && (
-          <a href={cf.constancia_url} target="_blank" rel="noopener noreferrer"
-            className="mt-3 flex items-center gap-2 text-xs text-primario hover:underline">
-            Ver Constancia de Situación Fiscal (PDF)
-          </a>
+          <div className="mt-3 flex items-center gap-3">
+            <a href={cf.constancia_url} target="_blank" rel="noopener noreferrer"
+              className="text-xs text-primario hover:underline">
+              Ver constancia
+            </a>
+            <a href={cf.constancia_url} download={`constancia-${cf.rfc}.pdf`}
+              className="text-xs font-medium text-white bg-primario rounded-md px-3 py-1.5 hover:opacity-90 transition">
+              Descargar PDF
+            </a>
+          </div>
         )}
       </div>
 
