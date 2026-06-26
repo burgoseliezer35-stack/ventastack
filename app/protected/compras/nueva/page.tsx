@@ -30,7 +30,7 @@ export default async function NuevaCompraPage() {
 
   const { data: productos } = await supabase
     .from("productos")
-    .select("id, nombre, costo")
+    .select("id, nombre, costo, imagen_url")
     .eq("company_id", perfil?.company_id)
     .order("nombre");
 
