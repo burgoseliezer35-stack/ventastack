@@ -15,7 +15,7 @@ export default async function AuditoriaPage() {
 
   if (miPerfil?.role !== "admin") redirect("/protected");
 
-  const [{ data: bitacora }, { data: cortes }, { data: kardex }] = await Promise.all([
+  const [{ data: bitacora }, { data: cortes }, { data: kardex }, { data: reconciliacion }] = await Promise.all([
     supabase
       .from("bitacora_auditoria")
       .select("*")
@@ -37,7 +37,10 @@ export default async function AuditoriaPage() {
       .eq("company_id", miPerfil.company_id)
       .order("created_at", { ascending: false })
       .limit(200),
+    supabase.rpc("reconciliar_stock"),
   ]);
+
+  const discrepancias = (reconciliacion ?? []).filter((r: {estado: string}) => r.estado === "discrepancia");
 
   const MOTIVO_COLOR: Record<string, string> = {
     venta:     "bg-blue-100 text-blue-700",
@@ -56,6 +59,58 @@ export default async function AuditoriaPage() {
           Solo visible para el administrador. Registra movimientos de inventario, cortes y acciones sensibles.
         </p>
       </div>
+
+      {/* ── Reconciliación de stock ──────────────────────────── */}
+      {discrepancias.length > 0 && (
+        <div className="overflow-hidden rounded-xl border border-red-200 bg-red-50 shadow-sm">
+          <div className="border-b border-red-200 px-5 py-3 flex items-center justify-between">
+            <div>
+              <h2 className="font-semibold text-red-800">⚠ Discrepancias de stock detectadas</h2>
+              <p className="text-xs text-red-600 mt-0.5">
+                El stock en la base de datos no coincide con el kardex. Requiere revisión.
+              </p>
+            </div>
+            <span className="rounded-full bg-red-100 border border-red-300 px-3 py-0.5 text-xs font-bold text-red-700">
+              {discrepancias.length} producto{discrepancias.length > 1 ? "s" : ""}
+            </span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-red-100 text-left text-xs font-semibold uppercase tracking-wide text-red-700">
+                  <th className="px-4 py-2.5">Producto</th>
+                  <th className="px-4 py-2.5 text-right">Stock sistema</th>
+                  <th className="px-4 py-2.5 text-right">Stock kardex</th>
+                  <th className="px-4 py-2.5 text-right">Diferencia</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-red-100">
+                {discrepancias.map((r: {producto_id: string; nombre: string; stock_actual: number; stock_kardex: number; diferencia: number}) => (
+                  <tr key={r.producto_id} className="bg-white">
+                    <td className="px-4 py-2.5 font-medium text-ink">{r.nombre}</td>
+                    <td className="cifra px-4 py-2.5 text-right text-ink">{r.stock_actual}</td>
+                    <td className="cifra px-4 py-2.5 text-right text-ink/70">{r.stock_kardex}</td>
+                    <td className={`cifra px-4 py-2.5 text-right font-bold ${r.diferencia > 0 ? "text-amber-600" : "text-red-600"}`}>
+                      {r.diferencia > 0 ? "+" : ""}{r.diferencia}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Si todo cuadra */}
+      {(reconciliacion ?? []).length > 0 && discrepancias.length === 0 && (
+        <div className="rounded-xl border border-verde/30 bg-verde-suave px-5 py-3 flex items-center gap-3">
+          <span className="text-verde font-bold text-lg">✓</span>
+          <div>
+            <p className="text-sm font-semibold text-verde">Stock reconciliado correctamente</p>
+            <p className="text-xs text-verde/70">Todos los productos cuadran con el kardex.</p>
+          </div>
+        </div>
+      )}
 
       {/* ── Kardex de inventario ─────────────────────────────── */}
       <div className="overflow-hidden rounded-xl border border-linea bg-white shadow-sm">
@@ -241,3 +296,4 @@ export default async function AuditoriaPage() {
     </div>
   );
 }
+
