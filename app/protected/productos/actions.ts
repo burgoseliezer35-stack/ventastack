@@ -14,6 +14,8 @@ export async function crearProducto(formData: FormData) {
   const categoriaId = (formData.get("categoria_id") as string) || null;
   const codigoBarras = (formData.get("codigo_barras") as string)?.trim() || null;
   const imagenUrl = (formData.get("imagen_url") as string)?.trim() || null;
+  const ivaPorcentaje = Number(formData.get("iva_porcentaje")) || 16;
+  const iepsPorcentaje = Number(formData.get("ieps_porcentaje")) || 0;
 
   if (!nombre || !Number.isFinite(precio) || precio <= 0) return;
 
@@ -26,6 +28,8 @@ export async function crearProducto(formData: FormData) {
     p_codigo_barras: codigoBarras,
     p_imagen_url: imagenUrl,
     p_categoria_id: categoriaId || null,
+    p_iva_porcentaje: ivaPorcentaje,
+    p_ieps_porcentaje: iepsPorcentaje,
   });
 
   if (error) {
