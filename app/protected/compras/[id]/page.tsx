@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 
 export default async function CompraDetallePage({
@@ -10,6 +10,16 @@ export default async function CompraDetallePage({
   const { id } = await params;
   const supabase = await createClient();
 
+  const { data: auth } = await supabase.auth.getClaims();
+  if (!auth?.claims) redirect("/auth/login");
+
+  // Obtener company_id del usuario para que RLS permita la lectura
+  const { data: perfil } = await supabase
+    .from("profiles")
+    .select("company_id")
+    .eq("id", auth.claims.sub as string)
+    .single();
+
   const { data: compra } = await supabase
     .from("compras")
     .select(`
@@ -19,6 +29,7 @@ export default async function CompraDetallePage({
       profiles(full_name)
     `)
     .eq("id", id)
+    .eq("company_id", perfil?.company_id)
     .single();
 
   if (!compra) notFound();
@@ -31,7 +42,8 @@ export default async function CompraDetallePage({
       iva_porcentaje, monto_iva, subtotal_con_impuestos,
       productos(nombre, codigo_barras)
     `)
-    .eq("compra_id", id);
+    .eq("compra_id", id)
+    .eq("company_id", perfil?.company_id);
 
   const proveedor = Array.isArray(compra.proveedores)
     ? compra.proveedores[0]?.nombre
