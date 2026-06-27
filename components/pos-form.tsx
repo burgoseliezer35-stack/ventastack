@@ -18,6 +18,8 @@ type Producto = {
   codigo_barras: string | null;
   imagen_url: string | null;
   niveles: NivelMayoreo[];
+  ieps_porcentaje: number;
+  iva_porcentaje: number;
 };
 type Cliente = { id: string; nombre: string };
 type ItemCarrito = {
@@ -26,6 +28,8 @@ type ItemCarrito = {
   precio_unitario: number;
   cantidad: number;
   stock_disponible: number;
+  ieps_porcentaje: number;
+  iva_porcentaje: number;
 };
 
 // Los niveles ya vienen ordenados de mayor a menor cantidad_minima
@@ -135,6 +139,8 @@ export function PosForm({
           precio_unitario: precio,
           cantidad: cantidadAAgregar,
           stock_disponible: producto.stock,
+          ieps_porcentaje: producto.ieps_porcentaje ?? 0,
+          iva_porcentaje: producto.iva_porcentaje ?? 16,
         },
       ];
     });
@@ -362,32 +368,59 @@ export function PosForm({
     0,
   );
 
-  // Cálculo de impuestos — mismo orden que el recibo (SAT México)
-  // Orden: Base → IEPS → IVA sobre (Base + IEPS)
+  // Cálculo de impuestos POR PRODUCTO — orden correcto SAT México
+  // Base → IEPS → IVA sobre (Base + IEPS)
   const r2 = (n: number) => Math.round(n * 100) / 100;
-  let baseGravable = 0;
-  let montoIva = 0;
-  let montoIepsPOS = 0;
-  let total = subtotal;
 
-  if (ivaIncluido) {
-    // Precios ya incluyen IVA (y posiblemente IEPS)
-    const factorTotal = 1
-      + (ivaPorcentaje / 100)
-      + (iepsHabilitado ? iepsPorcentaje / 100 : 0)
-      + (iepsHabilitado ? (iepsPorcentaje / 100) * (ivaPorcentaje / 100) : 0);
-    baseGravable = r2(subtotal / factorTotal);
-    montoIepsPOS = iepsHabilitado ? r2(baseGravable * (iepsPorcentaje / 100)) : 0;
-    montoIva = r2((baseGravable + montoIepsPOS) * (ivaPorcentaje / 100));
-    total = subtotal; // precio ya incluye todo
-  } else {
-    // Precios sin impuestos — agregar IEPS primero, luego IVA sobre (base + IEPS)
-    baseGravable = subtotal;
-    montoIepsPOS = iepsHabilitado ? r2(baseGravable * (iepsPorcentaje / 100)) : 0;
-    const baseConIeps = r2(baseGravable + montoIepsPOS);
-    montoIva = ivaPorcentaje > 0 ? r2(baseConIeps * (ivaPorcentaje / 100)) : 0;
-    total = r2(baseConIeps + montoIva);
-  }
+  // Calcular base, IEPS e IVA para cada item del carrito
+  const itemsConImpuestos = carrito.map((item) => {
+    const precioLinea = item.precio_unitario * item.cantidad;
+    const iepsPct = item.ieps_porcentaje ?? 0;
+    const ivaPct = item.iva_porcentaje ?? 16;
+
+    let base = 0;
+    let mIeps = 0;
+    let mIva = 0;
+
+    if (ivaIncluido) {
+      // Precio ya incluye impuestos — extraer base
+      const factor = 1 + (iepsPct/100) + (ivaPct/100) + (iepsPct/100)*(ivaPct/100);
+      base = r2(precioLinea / factor);
+      mIeps = r2(base * (iepsPct/100));
+      mIva  = r2((base + mIeps) * (ivaPct/100));
+    } else {
+      // Precio es base sin impuestos
+      base  = precioLinea;
+      mIeps = r2(base * (iepsPct/100));
+      mIva  = r2((base + mIeps) * (ivaPct/100));
+    }
+
+    return { ...item, base, mIeps, mIva, iepsPct, ivaPct };
+  });
+
+  const baseGravable = r2(itemsConImpuestos.reduce((s, i) => s + i.base, 0));
+  const montoIepsPOS = r2(itemsConImpuestos.reduce((s, i) => s + i.mIeps, 0));
+  const montoIva     = r2(itemsConImpuestos.reduce((s, i) => s + i.mIva, 0));
+  const total = ivaIncluido
+    ? r2(subtotal)
+    : r2(baseGravable + montoIepsPOS + montoIva);
+
+  // Agrupar por tasa para mostrar en el desglose del ticket (como Aurrera)
+  const desglosePorTasa = itemsConImpuestos.reduce((acc, i) => {
+    // IVA
+    const keyIva = `iva_${i.ivaPct}`;
+    if (!acc[keyIva]) acc[keyIva] = { tipo: "IVA", pct: i.ivaPct, base: 0, monto: 0 };
+    acc[keyIva].base  = r2(acc[keyIva].base + i.base);
+    acc[keyIva].monto = r2(acc[keyIva].monto + i.mIva);
+    // IEPS
+    if (i.iepsPct > 0) {
+      const keyIeps = `ieps_${i.iepsPct}`;
+      if (!acc[keyIeps]) acc[keyIeps] = { tipo: "IEPS", pct: i.iepsPct, base: 0, monto: 0 };
+      acc[keyIeps].base  = r2(acc[keyIeps].base + i.base);
+      acc[keyIeps].monto = r2(acc[keyIeps].monto + i.mIeps);
+    }
+    return acc;
+  }, {} as Record<string, { tipo: string; pct: number; base: number; monto: number }>);
 
   // Solo tiene sentido cuando el cajero de verdad escribió un
   // monto — si lo deja vacío, no mostramos ni bloqueamos nada (a
@@ -779,12 +812,16 @@ export function PosForm({
                   <span>IVA {ivaPorcentaje}%:</span>
                   <span className="cifra">${montoIva.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
                 </div>
-                {iepsHabilitado && montoIepsPOS > 0 && (
-                  <div className="flex justify-between">
-                    <span>IEPS {iepsPorcentaje}%:</span>
-                    <span className="cifra">${montoIepsPOS.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
-                  </div>
-                )}
+                {/* Desglose por tasa — como Aurrera */}
+                {Object.values(desglosePorTasa)
+                  .filter(t => t.tipo === "IEPS" && t.monto > 0)
+                  .map(t => (
+                    <div key={`ieps_${t.pct}`} className="flex justify-between">
+                      <span>IEPS {t.pct}%:</span>
+                      <span className="cifra">${t.monto.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+                    </div>
+                  ))
+                }
               </div>
             )}
           </div>

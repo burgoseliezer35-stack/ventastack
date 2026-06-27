@@ -370,6 +370,42 @@ export function ModalAgregarProducto({
                 </div>
               </div>
 
+              {/* Impuestos por producto */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink/50 mb-1.5">
+                    IVA
+                  </label>
+                  <select
+                    name="iva_porcentaje"
+                    defaultValue="16"
+                    className="w-full rounded-xl border border-linea px-3 py-3 text-sm text-ink focus:border-primario focus:outline-none focus:ring-2 focus:ring-primario/20"
+                  >
+                    <option value="16">16% — General</option>
+                    <option value="0">0% — Exento</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink/50 mb-1.5">
+                    IEPS
+                  </label>
+                  <select
+                    name="ieps_porcentaje"
+                    defaultValue="0"
+                    className="w-full rounded-xl border border-linea px-3 py-3 text-sm text-ink focus:border-primario focus:outline-none focus:ring-2 focus:ring-primario/20"
+                  >
+                    <option value="0">0% — Sin IEPS</option>
+                    <option value="8">8% — Bebidas azucaradas</option>
+                    <option value="26.5">26.5% — Tabacos</option>
+                    <option value="30">30% — Alcohol</option>
+                    <option value="160">160% — Cigarros</option>
+                  </select>
+                </div>
+              </div>
+              <p className="text-[10px] text-ink/40 -mt-2">
+                El IVA e IEPS se usan para el desglose correcto en el ticket según el SAT.
+              </p>
+
               <button
                 type="submit"
                 className="w-full rounded-xl bg-primario px-4 py-3.5 font-semibold text-white transition hover:opacity-90 text-sm"

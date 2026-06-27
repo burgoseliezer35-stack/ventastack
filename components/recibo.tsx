@@ -9,6 +9,15 @@ type Renglon = {
   cantidad: number;
   precioUnitario: number;
   subtotal: number;
+  ieps_porcentaje?: number;
+  iva_porcentaje?: number;
+};
+
+type DesgloseTasa = {
+  tipo: "IVA" | "IEPS";
+  pct: number;
+  base: number;
+  monto: number;
 };
 
 const ANCHOS = [58, 72, 80] as const;
@@ -36,13 +45,14 @@ type ReciboProps = {
   pieTicket?: string | null;
   efectivoRecibido?: number | null;
   cambio?: number | null;
+  desgloseTasas?: DesgloseTasa[];
 };
 
 export function Recibo({
   pedidoId, empresa, logoUrl, razonSocial, rfc, direccion, telefono,
   cliente, metodoPago, total, fecha, renglones, atendidoPor,
   ivaPorcentaje, ivaIncluido, iepsHabilitado, iepsPorcentaje,
-  anchoMm = 72, pieTicket, efectivoRecibido, cambio,
+  anchoMm = 72, pieTicket, efectivoRecibido, cambio, desgloseTasas,
 }: ReciboProps) {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [ancho, setAncho] = useState<Ancho>(
@@ -132,22 +142,48 @@ export function Recibo({
 
       {/* Desglose de impuestos y TOTAL */}
       <div style={{ borderTop: "1px dashed #999", padding: "4px 0", fontSize: 10 }}>
-        {/* Subtotal e impuestos */}
+        {/* Subtotal e impuestos — desglose por tasa como Aurrera */}
         <div style={{ display: "flex", justifyContent: "space-between" }}>
           <span>Subtotal</span>
           <span>${baseGravable.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </div>
-        {ivaPorcentaje > 0 && (
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span>IVA {ivaPorcentaje}%</span>
-            <span>${montoIva.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-          </div>
-        )}
-        {iepsHabilitado && montoIeps > 0 && (
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span>IEPS {iepsPorcentaje}%</span>
-            <span>${montoIeps.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-          </div>
+        {/* Si hay desglose por tasa, mostrarlo agrupado */}
+        {desgloseTasas && desgloseTasas.length > 0 ? (
+          <>
+            {desgloseTasas.filter(t => t.tipo === "IVA" && t.monto > 0).map(t => (
+              <div key={`iva_${t.pct}`} style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>IVA {t.pct}%</span>
+                <span style={{ display: "flex", gap: 8 }}>
+                  <span style={{ color: "#999", fontSize: 9 }}>base ${t.base.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  <span>${t.monto.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </span>
+              </div>
+            ))}
+            {desgloseTasas.filter(t => t.tipo === "IEPS" && t.monto > 0).map(t => (
+              <div key={`ieps_${t.pct}`} style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>IEPS {t.pct}%</span>
+                <span style={{ display: "flex", gap: 8 }}>
+                  <span style={{ color: "#999", fontSize: 9 }}>base ${t.base.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  <span>${t.monto.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </span>
+              </div>
+            ))}
+          </>
+        ) : (
+          <>
+            {ivaPorcentaje > 0 && (
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>IVA {ivaPorcentaje}%</span>
+                <span>${montoIva.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+            )}
+            {iepsHabilitado && montoIeps > 0 && (
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>IEPS {iepsPorcentaje}%</span>
+                <span>${montoIeps.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+            )}
+          </>
         )}
 
         {/* Efectivo y cambio — antes del TOTAL */}
