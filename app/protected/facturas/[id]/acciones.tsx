@@ -49,13 +49,23 @@ export function AccionesFactura({
         .from("facturas")
         .upload(ruta, archivo, { contentType: "application/pdf", upsert: true });
       if (upErr) throw upErr;
-      const { data } = supabase.storage.from("facturas").getPublicUrl(ruta);
-      setCfdiUrl(data.publicUrl);
 
-      // Actualizar en BD
+      // Generar URL firmada por 1 hora para mostrar al admin
+      const { data: signed } = await supabase.storage
+        .from("facturas")
+        .createSignedUrl(ruta, 3600);
+      const urlParaMostrar = signed?.signedUrl ?? ruta;
+      setCfdiUrl(urlParaMostrar);
+
+      // Guardar la ruta (no la URL firmada) y la fecha de subida
       await supabase
         .from("solicitudes_factura")
-        .update({ cfdi_url: data.publicUrl, estado: "en_proceso", updated_at: new Date().toISOString() })
+        .update({
+          cfdi_url: ruta, // guardamos la ruta, no la URL
+          estado: "en_proceso",
+          cfdi_subido_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
         .eq("id", solicitudId);
 
       setEstado("en_proceso");

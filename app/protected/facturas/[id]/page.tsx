@@ -27,7 +27,7 @@ export default async function DetalleFacturaPage({
     .from("solicitudes_factura")
     .select(`
       id, folio, uso_cfdi, estado, cfdi_url, notas, created_at,
-      clientes_fiscales(id, rfc, nombre, codigo_postal, regimen_fiscal, email, whatsapp, constancia_url),
+      clientes_fiscales(id, rfc, nombre, codigo_postal, regimen_fiscal, email, whatsapp, constancia_url, constancia_subida_at),
       pedidos(id, total, created_at, metodo_pago)
     `)
     .eq("id", id)
@@ -38,6 +38,42 @@ export default async function DetalleFacturaPage({
 
   const cf = Array.isArray(sol.clientes_fiscales) ? sol.clientes_fiscales[0] : sol.clientes_fiscales;
   const pedido = Array.isArray(sol.pedidos) ? sol.pedidos[0] : sol.pedidos;
+
+  // Generar URL firmada para la constancia (expira en 1 hora)
+  // El bucket es privado — nadie sin sesión puede acceder
+  let constanciaSignedUrl: string | null = null;
+  let cfdiSignedUrl: string | null = null;
+
+  if (cf?.constancia_url) {
+    // Extraer la ruta del archivo desde la URL pública o privada
+    const match = cf.constancia_url.match(/\/facturas\/(.+)$/);
+    if (match) {
+      const { data: signed } = await supabase.storage
+        .from("facturas")
+        .createSignedUrl(match[1], 3600); // 1 hora
+      constanciaSignedUrl = signed?.signedUrl ?? cf.constancia_url;
+    } else {
+      constanciaSignedUrl = cf.constancia_url;
+    }
+  }
+
+  if (sol.cfdi_url) {
+    const match = sol.cfdi_url.match(/\/facturas\/(.+)$/);
+    if (match) {
+      const { data: signed } = await supabase.storage
+        .from("facturas")
+        .createSignedUrl(match[1], 3600);
+      cfdiSignedUrl = signed?.signedUrl ?? sol.cfdi_url;
+    } else {
+      cfdiSignedUrl = sol.cfdi_url;
+    }
+  }
+
+  // Calcular días restantes si tiene fecha de subida
+  const cfRecord = cf as { constancia_url?: string | null; constancia_subida_at?: string | null; rfc?: string } & typeof cf;
+  const diasRestantes = cfRecord?.constancia_subida_at
+    ? Math.max(0, 30 - Math.floor((Date.now() - new Date(cfRecord.constancia_subida_at).getTime()) / (1000 * 60 * 60 * 24)))
+    : null;
 
   const REGIMENES: Record<string, string> = {
     "601": "General de Ley Personas Morales",
@@ -126,16 +162,35 @@ export default async function DetalleFacturaPage({
                 <p className="font-medium text-ink">{cf?.whatsapp ?? "—"}</p>
               </div>
             </div>
-            {cf?.constancia_url && (
-              <div className="px-5 pb-4 flex items-center gap-3 border-t border-linea pt-3">
-                <a href={cf.constancia_url} target="_blank" rel="noopener noreferrer"
-                  className="text-xs text-primario hover:underline">
-                  Ver constancia
-                </a>
-                <a href={cf.constancia_url} download={`constancia-${cf.rfc}.pdf`}
-                  className="text-xs font-semibold text-white bg-primario rounded-lg px-3 py-1.5 hover:opacity-90 transition">
-                  Descargar PDF
-                </a>
+            {constanciaSignedUrl && (
+              <div className="px-5 pb-4 border-t border-linea pt-3">
+                {/* Aviso de expiración */}
+                {diasRestantes !== null && (
+                  <div className={`mb-2 rounded-lg px-3 py-2 text-xs font-medium flex items-center gap-2 ${
+                    diasRestantes <= 5
+                      ? "bg-red-50 border border-red-200 text-red-700"
+                      : diasRestantes <= 10
+                      ? "bg-amber-50 border border-amber-200 text-amber-700"
+                      : "bg-blue-50 border border-blue-200 text-blue-700"
+                  }`}>
+                    <span>{diasRestantes <= 0 ? "⚠ La constancia ya expiró del servidor" : `⏱ La constancia se borra del servidor en ${diasRestantes} día${diasRestantes !== 1 ? "s" : ""}`}</span>
+                  </div>
+                )}
+                {diasRestantes === null && (
+                  <div className="mb-2 rounded-lg px-3 py-2 text-xs font-medium flex items-center gap-2 bg-blue-50 border border-blue-200 text-blue-700">
+                    <span>⏱ Las constancias se borran automáticamente a los 30 días por seguridad. Descárgala si la necesitas.</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-3">
+                  <a href={constanciaSignedUrl} target="_blank" rel="noopener noreferrer"
+                    className="text-xs text-primario hover:underline">
+                    Ver constancia
+                  </a>
+                  <a href={constanciaSignedUrl} download={`constancia-${cf?.rfc}.pdf`}
+                    className="text-xs font-semibold text-white bg-primario rounded-lg px-3 py-1.5 hover:opacity-90 transition">
+                    ⬇ Descargar PDF
+                  </a>
+                </div>
               </div>
             )}
           </div>
@@ -182,7 +237,7 @@ export default async function DetalleFacturaPage({
             companyId={perfil.company_id}
             folio={sol.folio}
             estado={sol.estado}
-            cfdiUrl={sol.cfdi_url}
+            cfdiUrl={cfdiSignedUrl}
             clienteEmail={cf?.email ?? null}
             clienteWhatsapp={cf?.whatsapp ?? null}
             clienteNombre={cf?.nombre ?? null}
