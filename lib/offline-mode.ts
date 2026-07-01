@@ -16,9 +16,14 @@ export type VentaOffline = {
   clienteId: string | null;
   metodoPago: string;
   total: number;
+  efectivoRecibido: number | null;
+  cambio: number | null;
   sincronizado: boolean;
+  intentos: number;
   error?: string;
 };
+
+const MAX_INTENTOS = 5;
 
 const DB_NAME = "ventastack_offline";
 const DB_VERSION = 1;
@@ -72,7 +77,10 @@ async function marcarSincronizada(id: string, error?: string): Promise<void> {
       const venta = req.result as VentaOffline;
       if (venta) {
         venta.sincronizado = !error;
-        if (error) venta.error = error;
+        if (error) {
+          venta.error = error;
+          venta.intentos = (venta.intentos ?? 0) + 1;
+        }
         store.put(venta);
       }
       resolve();
@@ -110,11 +118,23 @@ export function useOfflineMode(companyId: string) {
       const supabase = createClient();
 
       for (const venta of ventas) {
+        // No reintentar ventas que ya agotaron el límite — evita
+        // martillar el servidor con un error permanente en cada
+        // reconexión, y evita que el cajero vea "pendientes" que
+        // nunca bajan sin saber por qué.
+        if ((venta.intentos ?? 0) >= MAX_INTENTOS) continue;
+
         try {
           const { error } = await supabase.rpc("crear_pedido_con_detalle", {
             p_cliente_id: venta.clienteId,
             p_origen: "pos",
             p_metodo_pago: venta.metodoPago,
+            // Antes se omitían estos 3 campos: el total se
+            // recalculaba solo sumando items (perdiendo IVA/IEPS ya
+            // calculado offline) y se perdía efectivo/cambio.
+            p_efectivo_recibido: venta.efectivoRecibido,
+            p_cambio: venta.cambio,
+            p_total: venta.total,
             p_items: venta.items.map((i) => ({
               producto_id: i.producto_id,
               cantidad: i.cantidad,
@@ -161,8 +181,21 @@ export function useOfflineMode(companyId: string) {
       items: VentaOffline["items"],
       clienteId: string | null,
       metodoPago: string,
-      total: number
+      total: number,
+      efectivoRecibido: number | null = null,
+      cambio: number | null = null
     ): Promise<string> => {
+      // Crédito offline queda bloqueado: el límite de crédito del
+      // cliente se valida server-side (trigger de bloqueo_credito) y
+      // no hay forma de verificarlo sin conexión. Permitirlo dejaría
+      // acumular deuda ilimitada en un cliente ya bloqueado hasta
+      // que reconecte.
+      if (metodoPago === "credito") {
+        throw new Error(
+          "Las ventas a crédito necesitan internet para validar el límite del cliente."
+        );
+      }
+
       const id = crypto.randomUUID();
       const venta: VentaOffline = {
         id,
@@ -172,7 +205,10 @@ export function useOfflineMode(companyId: string) {
         clienteId,
         metodoPago,
         total,
+        efectivoRecibido,
+        cambio,
         sincronizado: false,
+        intentos: 0,
       };
       await guardarVentaLocal(venta);
       await actualizarConteo();
