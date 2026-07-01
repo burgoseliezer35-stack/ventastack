@@ -10,22 +10,23 @@ export default async function FacturaPublicaPage({
   const { folio } = await params;
   const supabase = await createClient();
 
-  // Buscar el pedido por folio (los primeros 8 chars del ID en mayúsculas)
-  const { data: pedidos } = await supabase
-    .from("pedidos")
-    .select("id, total, created_at, company_id, companies(name, logo_url)")
-    .order("created_at", { ascending: false });
+  // RPC pública (security definer): esta página la abre el cliente
+  // final sin sesión de empleado, así que una consulta normal contra
+  // "pedidos" siempre da 0 filas por RLS (get_my_company_id() = NULL
+  // sin sesión). La RPC resuelve el folio del lado del servidor con
+  // permiso controlado, exponiendo solo los campos que la página usa.
+  const { data: rows, error } = await supabase.rpc("obtener_pedido_por_folio", {
+    p_folio: folio,
+  });
 
-  // Buscar pedido cuyo ID empiece con el folio
-  const pedido = pedidos?.find(
-    (p) => p.id.replace(/-/g, "").toUpperCase().slice(0, 8) === folio.toUpperCase()
-  );
+  const pedido = rows?.[0];
 
-  if (!pedido) notFound();
+  if (error || !pedido) notFound();
 
-  const empresa = Array.isArray(pedido.companies)
-    ? pedido.companies[0]
-    : pedido.companies;
+  const empresa = {
+    name: pedido.empresa_nombre,
+    logo_url: pedido.empresa_logo_url,
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center py-8 px-4">
@@ -49,7 +50,7 @@ export default async function FacturaPublicaPage({
         </div>
 
         <FormularioFactura
-          pedidoId={pedido.id}
+          pedidoId={pedido.pedido_id}
           companyId={pedido.company_id}
           folio={folio}
           total={pedido.total}

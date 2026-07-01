@@ -64,12 +64,22 @@ export function FormularioFactura({
   const buscarRfcExistente = async (rfc: string) => {
     if (rfc.length < 12) return;
     const supabase = createClient();
+    // RPC pública (security definer): igual que el folio, esta
+    // página no tiene sesión de empleado, así que un select directo
+    // contra clientes_fiscales siempre regresa 0 filas por RLS.
     const { data } = await supabase
-      .from("clientes_fiscales")
-      .select("rfc, nombre, codigo_postal, regimen_fiscal, email, whatsapp")
-      .eq("company_id", companyId)
-      .eq("rfc", rfc.toUpperCase().trim())
-      .single();
+      .rpc("buscar_cliente_fiscal_publico", {
+        p_company_id: companyId,
+        p_rfc: rfc,
+      })
+      .maybeSingle<{
+        rfc: string;
+        nombre: string | null;
+        codigo_postal: string | null;
+        regimen_fiscal: string | null;
+        email: string | null;
+        whatsapp: string | null;
+      }>();
     if (data) {
       setCampos((prev) => ({
         ...prev,
@@ -133,36 +143,25 @@ export function FormularioFactura({
     try {
       const supabase = createClient();
 
-      const { data: cf, error: cfErr } = await supabase
-        .from("clientes_fiscales")
-        .upsert({
-          company_id: companyId,
-          rfc: campos.rfc.toUpperCase().trim(),
-          nombre: campos.nombre.trim(),
-          codigo_postal: campos.codigo_postal.trim(),
-          regimen_fiscal: campos.regimen_fiscal,
-          email: campos.email.trim() || null,
-          whatsapp: campos.whatsapp.trim() || null,
-          constancia_url: constanciaUrl,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: "company_id,rfc" })
-        .select("id")
-        .single();
+      // RPC pública (security definer): un upsert directo fallaba
+      // cuando el RFC ya existía, porque el UPDATE que dispara el
+      // upsert exige sesión de empleado (RLS), y esta página no
+      // tiene una — el cliente final la abre sin login.
+      const { error: rpcError } = await supabase.rpc("enviar_solicitud_factura", {
+        p_company_id: companyId,
+        p_pedido_id: pedidoId,
+        p_folio: folio,
+        p_rfc: campos.rfc,
+        p_nombre: campos.nombre,
+        p_codigo_postal: campos.codigo_postal,
+        p_regimen_fiscal: campos.regimen_fiscal,
+        p_uso_cfdi: campos.uso_cfdi,
+        p_email: campos.email || null,
+        p_whatsapp: campos.whatsapp || null,
+        p_constancia_url: constanciaUrl,
+      });
 
-      if (cfErr) throw cfErr;
-
-      const { error: solErr } = await supabase
-        .from("solicitudes_factura")
-        .insert({
-          company_id: companyId,
-          pedido_id: pedidoId,
-          cliente_fiscal_id: cf.id,
-          folio,
-          uso_cfdi: campos.uso_cfdi,
-          estado: "pendiente",
-        });
-
-      if (solErr) throw solErr;
+      if (rpcError) throw rpcError;
       setEnviado(true);
     } catch {
       setError("Error al enviar. Intenta de nuevo.");
