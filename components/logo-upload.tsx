@@ -52,7 +52,9 @@ export function LogoUpload({ logoActual }: { logoActual: string | null }) {
     // Comprimir antes de subir
     const blob = await comprimirABlob(archivo);
     const ext = "jpg";
-    const ruta = `logos/${user.id}-${Date.now()}.${ext}`;
+    // crypto.randomUUID() genera un ID único sin depender de Date.now()
+    // (función impura rechazada por react-hooks/purity).
+    const ruta = `logos/${user.id}-${crypto.randomUUID()}.${ext}`;
 
     const { error } = await supabase.storage
       .from("empresas")

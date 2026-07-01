@@ -245,7 +245,7 @@ export function ConfiguracionTabs({
                 </div>
                 <div className="sm:col-span-2"><Campo label="Pie de ticket" valor={empresa.pie_ticket} /></div>
                 {!empresa.name && !empresa.rfc && (
-                  <p className="sm:col-span-2 text-sm text-ink/40 italic">Toca "Editar" para agregar tus datos.</p>
+                  <p className="sm:col-span-2 text-sm text-ink/40 italic">Toca &ldquo;Editar&rdquo; para agregar tus datos.</p>
                 )}
               </div>
             )}
@@ -392,7 +392,7 @@ export function ConfiguracionTabs({
                 <Campo label="CP fiscal" valor={empresa.cp_fiscal} />
                 <Campo label="PAC" valor={empresa.pac_nombre ? `${empresa.pac_nombre} (${empresa.pac_modo ?? "sandbox"})` : undefined} />
                 <Campo label="Usuario PAC" valor={empresa.pac_usuario} />
-                {!empresa.regimen_fiscal && <p className="text-sm text-ink/40 italic">Toca "Editar" para configurar CFDI.</p>}
+                {!empresa.regimen_fiscal && <p className="text-sm text-ink/40 italic">Toca &ldquo;Editar&rdquo; para configurar CFDI.</p>}
               </div>
             )}
           </>
@@ -420,10 +420,10 @@ export function ConfiguracionTabs({
                 {empresa.slug ? (
                   <div className="rounded-lg bg-paper border border-linea p-3 text-xs space-y-1">
                     <p className="text-xs text-ink/40">Enlace de acceso actual</p>
-                    <p className="font-mono text-primario break-all">ventastack.vercel.app/auth/vendedor?empresa={empresa.slug}</p>
+                    <p className="font-mono text-primario break-all">{(process.env.NEXT_PUBLIC_APP_URL?.replace("https://","") ?? "ventastack.vercel.app")}/auth/vendedor?empresa={empresa.slug}</p>
                   </div>
                 ) : (
-                  <p className="text-sm text-ink/40 italic">Toca "Editar" para configurar el slug.</p>
+                  <p className="text-sm text-ink/40 italic">Toca &ldquo;Editar&rdquo; para configurar el slug.</p>
                 )}
               </div>
             )}
@@ -456,7 +456,7 @@ export function ConfiguracionTabs({
               <div className="flex flex-col gap-2">
                 <Campo label="WhatsApp" valor={empresa.whatsapp_admin} />
                 <Campo label="Alerta de stock" valor={empresa.umbral_stock_bajo ? `Cuando queden menos de ${empresa.umbral_stock_bajo} unidades` : undefined} />
-                {!empresa.whatsapp_admin && <p className="text-sm text-ink/40 italic">Toca "Editar" para configurar WhatsApp.</p>}
+                {!empresa.whatsapp_admin && <p className="text-sm text-ink/40 italic">Toca &ldquo;Editar&rdquo; para configurar WhatsApp.</p>}
               </div>
             )}
           </>
