@@ -27,7 +27,7 @@ export default async function PosPage() {
 
   const { data: productosRaw } = await supabase
     .from("productos")
-    .select("id, nombre, precio, stock, codigo_barras, imagen_url, ieps_porcentaje, iva_porcentaje")
+    .select("id, nombre, precio, stock, codigo_barras, imagen_url, ieps_porcentaje, iva_porcentaje, unidad_medida, step_cantidad")
     .eq("company_id", miPerfil?.company_id ?? "")
     .eq("activo", true)
     .order("nombre");
