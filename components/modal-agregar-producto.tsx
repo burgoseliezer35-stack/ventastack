@@ -361,12 +361,51 @@ export function ModalAgregarProducto({
                   <input
                     name="stock_inicial"
                     type="number"
-                    step="1"
+                    step="0.001"
                     min="0"
                     defaultValue={0}
                     className="w-full rounded-xl border border-linea px-3 py-3 text-sm text-ink focus:border-primario focus:outline-none focus:ring-2 focus:ring-primario/20"
                   />
-                  <p className="text-[10px] text-ink/30 mt-0.5">Unidades en existencia</p>
+                  <p className="text-[10px] text-ink/30 mt-0.5">Cantidad en existencia</p>
+                </div>
+              </div>
+
+              {/* Unidad de medida y Step (incremento por default) */}
+              {/* El step se muestra solo cuando la unidad no es pieza,
+                  porque para piezas el default de 1 es siempre correcto. */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink/50 mb-1.5">
+                    Se vende por
+                  </label>
+                  <select
+                    name="unidad_medida"
+                    defaultValue="pieza"
+                    className="w-full rounded-xl border border-linea px-3 py-3 text-sm text-ink focus:border-primario focus:outline-none focus:ring-2 focus:ring-primario/20"
+                  >
+                    <option value="pieza">Pieza</option>
+                    <option value="kg">Kilogramo (kg)</option>
+                    <option value="g">Gramo (g)</option>
+                    <option value="litro">Litro</option>
+                    <option value="ml">Mililitro (ml)</option>
+                    <option value="metro">Metro</option>
+                    <option value="caja">Caja</option>
+                    <option value="paquete">Paquete</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink/50 mb-1.5">
+                    Incremento
+                  </label>
+                  <input
+                    name="step_cantidad"
+                    type="number"
+                    step="0.001"
+                    min="0.001"
+                    defaultValue={1}
+                    className="w-full rounded-xl border border-linea px-3 py-3 text-sm text-ink focus:border-primario focus:outline-none focus:ring-2 focus:ring-primario/20"
+                  />
+                  <p className="text-[10px] text-ink/30 mt-0.5">Sube/baja de a cuánto (ej. 0.1 kg)</p>
                 </div>
               </div>
 

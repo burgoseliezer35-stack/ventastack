@@ -20,6 +20,8 @@ type Producto = {
   niveles: NivelMayoreo[];
   ieps_porcentaje: number;
   iva_porcentaje: number;
+  unidad_medida: string;
+  step_cantidad: number;
 };
 type Cliente = { id: string; nombre: string };
 type ItemCarrito = {
@@ -30,6 +32,8 @@ type ItemCarrito = {
   stock_disponible: number;
   ieps_porcentaje: number;
   iva_porcentaje: number;
+  unidad_medida: string;
+  step_cantidad: number;
 };
 
 // Los niveles ya vienen ordenados de mayor a menor cantidad_minima
@@ -108,17 +112,23 @@ export function PosForm({
 
   const agregarProductoAlCarrito = (
     producto: Producto,
-    cantidadAAgregar: number = 1,
+    cantidadAAgregar?: number,
   ) => {
     setError(null);
+
+    // Si el que llama no pasó una cantidad explícita (típico: tap a
+    // la tarjeta del producto), usamos el step del producto. Así una
+    // pieza suma 1 y un kg suma 0.1 con un solo tap, sin que el
+    // cajero tenga que abrir el input.
+    const suma = cantidadAAgregar ?? (producto.step_cantidad ?? 1);
 
     setCarrito((prev) => {
       const existente = prev.find((i) => i.producto_id === producto.id);
       const cantidadActual = existente?.cantidad ?? 0;
-      const nuevaCantidad = cantidadActual + cantidadAAgregar;
+      const nuevaCantidad = cantidadActual + suma;
 
       if (nuevaCantidad > producto.stock) {
-        setError(`Solo quedan ${producto.stock} de "${producto.nombre}"`);
+        setError(`Solo quedan ${producto.stock} ${producto.unidad_medida ?? ''} de "${producto.nombre}"`);
         return prev;
       }
 
@@ -137,10 +147,12 @@ export function PosForm({
           producto_id: producto.id,
           nombre: producto.nombre,
           precio_unitario: precio,
-          cantidad: cantidadAAgregar,
+          cantidad: suma,
           stock_disponible: producto.stock,
           ieps_porcentaje: producto.ieps_porcentaje ?? 0,
           iva_porcentaje: producto.iva_porcentaje ?? 16,
+          unidad_medida: producto.unidad_medida ?? 'pieza',
+          step_cantidad: producto.step_cantidad ?? 1,
         },
       ];
     });
@@ -732,16 +744,24 @@ export function PosForm({
                   <tr key={item.producto_id} className={idx % 2 === 1 ? "bg-paper/60" : ""}>
                     <td className="px-4 py-2.5 text-ink">{item.nombre}</td>
                     <td className="px-4 py-2.5">
-                      <input
-                        type="number"
-                        min={1}
-                        max={item.stock_disponible}
-                        value={item.cantidad}
-                        onChange={(e) =>
-                          cambiarCantidad(item.producto_id, Number(e.target.value))
-                        }
-                        className="w-16 rounded-md border border-linea px-2 py-1 text-center"
-                      />
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          min={item.step_cantidad}
+                          max={item.stock_disponible}
+                          step={item.step_cantidad}
+                          value={item.cantidad}
+                          onChange={(e) =>
+                            cambiarCantidad(item.producto_id, Number(e.target.value))
+                          }
+                          className="w-20 rounded-md border border-linea px-2 py-1 text-center"
+                        />
+                        {/* Mostrar la unidad solo si no es pieza — para
+                            piezas se sobreentiende y ocuparía espacio. */}
+                        {item.unidad_medida !== 'pieza' && (
+                          <span className="text-xs text-ink/50">{item.unidad_medida}</span>
+                        )}
+                      </div>
                     </td>
                     <td className="cifra px-4 py-2.5 text-right text-ink/70">
                       ${item.precio_unitario.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}
