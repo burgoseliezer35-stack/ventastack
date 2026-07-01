@@ -452,6 +452,8 @@ export function PosForm({
     // Sin internet — guardar en cola local y continuar
     if (!online) {
       try {
+        const efectivoNum = efectivoRecibido !== "" ? Number(efectivoRecibido) : null;
+        const cambioNum = cambio !== null && cambio >= 0 ? cambio : null;
         await guardarOffline(
           carrito.map((i) => ({
             producto_id: i.producto_id,
@@ -461,15 +463,17 @@ export function PosForm({
           })),
           clienteId || null,
           metodoPago,
-          total
+          total,
+          efectivoNum,
+          cambioNum
         );
         setIsLoading(false);
         setCarrito([]);
         try { sessionStorage.removeItem("ventastack_carrito"); } catch { /* ok */ }
         setAviso(`Venta guardada sin internet ($${total.toLocaleString("en-US", { minimumFractionDigits: 2 })}). Se registrará cuando vuelva la conexión.`);
-      } catch {
+      } catch (err) {
         setIsLoading(false);
-        setError("No se pudo guardar la venta offline. Intenta de nuevo.");
+        setError(err instanceof Error ? err.message : "No se pudo guardar la venta offline. Intenta de nuevo.");
       }
       return;
     }
@@ -856,20 +860,30 @@ export function PosForm({
                 { val: "tarjeta", label: "Tarjeta" },
                 { val: "transferencia", label: "Transferencia" },
                 { val: "credito", label: "Crédito" },
-              ].map(({ val, label }) => (
-                <button
-                  key={val}
-                  type="button"
-                  onClick={() => { setMetodoPago(val); setEfectivoRecibido(""); }}
-                  className={`rounded-lg py-2 text-sm font-semibold transition border ${
-                    metodoPago === val
-                      ? "bg-white text-primario border-white"
-                      : "bg-white/10 text-white border-white/20 hover:bg-white/20"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
+              ].map(({ val, label }) => {
+                // Crédito necesita validar el límite del cliente en
+                // el servidor — sin internet no hay forma de saber
+                // si ya está bloqueado, así que se deshabilita.
+                const deshabilitado = val === "credito" && !online;
+                return (
+                  <button
+                    key={val}
+                    type="button"
+                    disabled={deshabilitado}
+                    title={deshabilitado ? "Crédito necesita internet" : undefined}
+                    onClick={() => { setMetodoPago(val); setEfectivoRecibido(""); }}
+                    className={`rounded-lg py-2 text-sm font-semibold transition border ${
+                      deshabilitado
+                        ? "bg-white/5 text-white/40 border-white/10 cursor-not-allowed"
+                        : metodoPago === val
+                        ? "bg-white text-primario border-white"
+                        : "bg-white/10 text-white border-white/20 hover:bg-white/20"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
