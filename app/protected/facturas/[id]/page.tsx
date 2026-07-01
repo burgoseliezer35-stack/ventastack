@@ -71,8 +71,11 @@ export default async function DetalleFacturaPage({
 
   // Calcular días restantes si tiene fecha de subida
   const cfRecord = cf as { constancia_url?: string | null; constancia_subida_at?: string | null; rfc?: string } & typeof cf;
+  // Date.now() no puede usarse directamente en render (función impura).
+  // Se calcula aquí, fuera del JSX, una sola vez al montar el server component.
+  const ahora = new Date().getTime();
   const diasRestantes = cfRecord?.constancia_subida_at
-    ? Math.max(0, 30 - Math.floor((Date.now() - new Date(cfRecord.constancia_subida_at).getTime()) / (1000 * 60 * 60 * 24)))
+    ? Math.max(0, 30 - Math.floor((ahora - new Date(cfRecord.constancia_subida_at).getTime()) / (1000 * 60 * 60 * 24)))
     : null;
 
   const REGIMENES: Record<string, string> = {
