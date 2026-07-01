@@ -56,7 +56,15 @@ export async function PATCH(
 
   if (Object.keys(updates).length > 0) {
     const adminClient = createAdminClient();
-    await adminClient.from("profiles").update(updates).eq("id", id);
+    // company_id explícito aquí también: aunque verificarPermiso ya
+    // valida el tenant arriba, el admin client se salta RLS por
+    // completo — este filtro es la última barrera si algún día se
+    // reutiliza este patrón sin pasar por verificarPermiso primero.
+    await adminClient
+      .from("profiles")
+      .update(updates)
+      .eq("id", id)
+      .eq("company_id", check.miPerfil!.company_id);
   }
 
   // Actualizar contraseña si se mandó una nueva
