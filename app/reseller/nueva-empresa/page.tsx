@@ -1,15 +1,38 @@
+"use client";
+
 import Link from "next/link";
 import { crearEmpresa } from "./actions";
+import { useTransition, useState } from "react";
 
 export default function NuevaEmpresaPage() {
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (pending) return; // bloquear doble submit
+    setError(null);
+    const formData = new FormData(e.currentTarget);
+    startTransition(async () => {
+      const result = await crearEmpresa(formData);
+      if (result?.error) setError(result.error);
+    });
+  };
+
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-xl font-bold text-ink">
         Dar de alta un negocio nuevo
       </h1>
 
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
       <form
-        action={crearEmpresa}
+        onSubmit={handleSubmit}
         className="flex flex-col gap-4 rounded-lg border border-linea bg-white p-6"
       >
         <div>
@@ -43,6 +66,10 @@ export default function NuevaEmpresaPage() {
             <option value="distribuidor">🚚 Distribuidor / Ruta de ventas</option>
             <option value="restaurante">🍽️ Restaurante / Cafetería</option>
             <option value="taller">🔧 Taller / Servicio técnico</option>
+            <option value="farmacia">💊 Farmacia</option>
+            <option value="ferreteria">🔩 Ferretería</option>
+            <option value="tecnologia">💻 Tecnología</option>
+            <option value="papeleria">📎 Papelería</option>
           </select>
         </div>
 
@@ -60,10 +87,7 @@ export default function NuevaEmpresaPage() {
         </div>
 
         <div>
-          <label
-            htmlFor="nombre_admin"
-            className="block text-sm font-medium text-ink"
-          >
+          <label htmlFor="nombre_admin" className="block text-sm font-medium text-ink">
             Nombre completo del dueño/admin
           </label>
           <input
@@ -76,10 +100,7 @@ export default function NuevaEmpresaPage() {
         </div>
 
         <div>
-          <label
-            htmlFor="correo_admin"
-            className="block text-sm font-medium text-ink"
-          >
+          <label htmlFor="correo_admin" className="block text-sm font-medium text-ink">
             Correo del dueño/admin de ese negocio
           </label>
           <input
@@ -92,10 +113,7 @@ export default function NuevaEmpresaPage() {
         </div>
 
         <div>
-          <label
-            htmlFor="password_admin"
-            className="block text-sm font-medium text-ink"
-          >
+          <label htmlFor="password_admin" className="block text-sm font-medium text-ink">
             Contraseña que va a usar
           </label>
           <input
@@ -114,10 +132,7 @@ export default function NuevaEmpresaPage() {
         </div>
 
         <div>
-          <label
-            htmlFor="precio_mensual"
-            className="block text-sm font-medium text-ink"
-          >
+          <label htmlFor="precio_mensual" className="block text-sm font-medium text-ink">
             Precio mensual
           </label>
           <input
@@ -134,9 +149,10 @@ export default function NuevaEmpresaPage() {
 
         <button
           type="submit"
-          className="rounded-md bg-primario px-4 py-2 font-medium text-white transition hover:opacity-90"
+          disabled={pending}
+          className="rounded-md bg-primario px-4 py-2 font-medium text-white transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Crear negocio e invitar
+          {pending ? "Creando…" : "Crear negocio e invitar"}
         </button>
       </form>
 

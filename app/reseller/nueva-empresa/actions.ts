@@ -4,7 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 
-export async function crearEmpresa(formData: FormData) {
+export async function crearEmpresa(
+  formData: FormData
+): Promise<{ error: string } | undefined> {
   const supabase = await createClient();
 
   const { data, error } = await supabase.auth.getClaims();
@@ -33,34 +35,40 @@ export async function crearEmpresa(formData: FormData) {
   const buscadorProductos = (formData.get("buscador_productos") as string) || "openfoodfacts";
 
   if (!nombre || !correoAdmin || !nombreAdmin || passwordAdmin.length < 6) {
-    return;
+    return { error: "Todos los campos son obligatorios y la contraseña debe tener al menos 6 caracteres." };
   }
 
-  // 1. La empresa nueva. RLS deja hacer este insert solo porque
-  // somos superadmin (política "superadmin_crea_empresas" de
-  // 010_reseller_superadmin.sql).
+  // Verificar que el correo no exista antes de crear la empresa
+  // (evita empresas huérfanas si el correo ya está registrado).
+  const admin = createAdminClient();
+  const { data: existentes } = await admin.auth.admin.listUsers();
+  const correoYaExiste = existentes?.users?.some(
+    (u) => u.email?.toLowerCase() === correoAdmin.toLowerCase()
+  );
+  if (correoYaExiste) {
+    return { error: `El correo "${correoAdmin}" ya está registrado en otra empresa.` };
+  }
+
+  // 1. Crear la empresa
   const { data: empresaNueva, error: errorEmpresa } = await supabase
     .from("companies")
     .insert({
       name: nombre,
       precio_mensual: Number.isFinite(precioMensual) ? precioMensual : 0,
-      tipo_negocio: tipoNegocio,
+      // Escribir en tipos_negocio (array) en vez de tipo_negocio
+      // (columna vieja de texto con CHECK restrictivo de 4 valores).
+      tipos_negocio: [tipoNegocio],
       buscador_productos: buscadorProductos,
     })
     .select("id")
     .single();
 
   if (errorEmpresa || !empresaNueva) {
-    return;
+    return { error: errorEmpresa?.message ?? "Error al crear la empresa." };
   }
 
-  // 2. Creamos la cuenta del dueño real de ese negocio directo, ya
-  // lista para entrar — sin mandar ningún correo (el de prueba de
-  // Supabase tiene un límite de 2 por hora y ni le llega a alguien
-  // fuera de tu propio equipo de Supabase, así que no sirve para
-  // esto).
-  const admin = createAdminClient();
-  await admin.auth.admin.createUser({
+  // 2. Crear la cuenta del admin
+  const { error: errorUser } = await admin.auth.admin.createUser({
     email: correoAdmin,
     password: passwordAdmin,
     email_confirm: true,
@@ -70,6 +78,12 @@ export async function crearEmpresa(formData: FormData) {
       full_name: nombreAdmin,
     },
   });
+
+  if (errorUser) {
+    // Si falla la cuenta, borrar la empresa para no dejar huérfana
+    await supabase.from("companies").delete().eq("id", empresaNueva.id);
+    return { error: `Error al crear la cuenta: ${errorUser.message}` };
+  }
 
   redirect(`/reseller/empresas/${empresaNueva.id}`);
 }
