@@ -12,10 +12,6 @@ export async function guardarConfiguracion(
   const supabase = await createClient();
 
   const str = (k: string) => (formData.get(k) as string)?.trim() || null;
-  const num = (k: string) => {
-    const v = Number(formData.get(k));
-    return Number.isFinite(v) ? v : 0;
-  };
 
   let campos: Record<string, unknown> = {};
 
@@ -35,10 +31,7 @@ export async function guardarConfiguracion(
     };
   } else if (tab === "impuestos") {
     campos = {
-      iva_porcentaje: num("iva_porcentaje"),
-      iva_incluido: formData.get("iva_incluido") === "true",
-      ieps_habilitado: formData.get("ieps_habilitado") === "true",
-      ieps_porcentaje: num("ieps_porcentaje"),
+      precios_con_iva_incluido: formData.get("precios_con_iva_incluido") === "true",
     };
   } else if (tab === "cfdi") {
     campos = {

@@ -46,7 +46,7 @@ export default async function ConfiguracionPage({
   try {
     const { data: ext } = await supabase
       .from("companies")
-      .select("logo_url, rfc, razon_social, calle, colonia, ciudad, estado_empresa, codigo_postal, telefono, iva_porcentaje, iva_incluido, ieps_habilitado, ieps_porcentaje, cfdi_habilitado, regimen_fiscal, cp_fiscal, pac_nombre, pac_usuario, pac_password, pac_modo, csd_cer, csd_key, csd_password, pie_ticket")
+      .select("logo_url, rfc, razon_social, calle, colonia, ciudad, estado_empresa, codigo_postal, telefono, precios_con_iva_incluido, cfdi_habilitado, regimen_fiscal, cp_fiscal, pac_nombre, pac_usuario, pac_password, pac_modo, csd_cer, csd_key, csd_password, pie_ticket")
       .eq("id", miPerfil.company_id)
       .single();
     empresaExtendida = (ext as Record<string, unknown>) ?? {};
