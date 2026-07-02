@@ -106,7 +106,19 @@ export async function borrarEmpresa(
       await admin.from("pedidos").delete().eq("company_id", companyId);
     }
 
-    // Borrar profiles de esta empresa
+    // Borrar profiles de esta empresa Y los usuarios de auth.users
+    // (si no se borran de auth, el correo queda "ocupado" para siempre
+    // y no se puede reusar al crear otra empresa).
+    const { data: perfiles } = await admin
+      .from("profiles")
+      .select("id")
+      .eq("company_id", companyId);
+
+    if (perfiles && perfiles.length > 0) {
+      for (const p of perfiles) {
+        await admin.auth.admin.deleteUser(p.id);
+      }
+    }
     await admin.from("profiles").delete().eq("company_id", companyId);
 
     // Borrar la empresa
