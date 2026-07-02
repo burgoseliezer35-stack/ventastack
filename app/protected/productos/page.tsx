@@ -46,6 +46,14 @@ export default async function ProductosPage({
     .select("id, nombre")
     .order("nombre");
 
+  // Catálogo de impuestos de la empresa (creado por la 048)
+  const { data: impuestos } = await supabase
+    .from("impuestos")
+    .select("id, nombre, tipo, factor, porcentaje, aplicar_automatico")
+    .eq("activo", true)
+    .order("tipo")
+    .order("porcentaje");
+
   const { data: productosRaw } = await supabase
     .from("productos")
     .select("id, nombre, precio, costo, activo, stock, codigo_barras, imagen_url, categorias(nombre)")
@@ -94,7 +102,7 @@ export default async function ProductosPage({
       </div>
 
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-linea bg-white p-4 shadow-sm">
-        <ModalAgregarProducto categorias={categorias ?? []} crearProducto={crearProducto} />
+        <ModalAgregarProducto categorias={categorias ?? []} impuestos={impuestos ?? []} crearProducto={crearProducto} />
         <details className="ml-auto">
           <summary className="cursor-pointer list-none text-sm font-medium text-primario hover:underline">
             Importar desde Excel
