@@ -23,6 +23,7 @@ type Empresa = {
   iva_incluido?: boolean | null;
   ieps_habilitado?: boolean | null;
   ieps_porcentaje?: number | null;
+  precios_con_iva_incluido?: boolean | null;
   cfdi_habilitado?: boolean | null;
   regimen_fiscal?: string | null;
   cp_fiscal?: string | null;
@@ -261,48 +262,35 @@ export function ConfiguracionTabs({
                 onEditar={() => setEditando("impuestos")} onCancelar={() => setEditando(null)} />
             </div>
             {estaEditando ? (
-              <>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-ink/60 mb-1">IVA %</label>
-                    <input name="iva_porcentaje" type="number" min="0" max="100" step="0.01"
-                      defaultValue={empresa.iva_porcentaje ?? 0}
-                      className="w-full rounded-md border border-linea px-3 py-2 text-sm text-ink focus:border-primario focus:outline-none" />
-                    <p className="mt-0.5 text-xs text-ink/40">0 = sin IVA · 16 = estándar</p>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-ink/60 mb-1">Modo de precios</label>
-                    <select name="iva_incluido" defaultValue={empresa.iva_incluido ? "true" : "false"}
-                      className="w-full rounded-md border border-linea px-3 py-2 text-sm text-ink focus:border-primario focus:outline-none">
-                      <option value="true">Ya incluyen IVA</option>
-                      <option value="false">Sin IVA (se agrega al cobrar)</option>
-                    </select>
-                  </div>
+              <div className="flex flex-col gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-ink/60 mb-1">Modo de precios</label>
+                  <select name="precios_con_iva_incluido"
+                    defaultValue={empresa.precios_con_iva_incluido ? "true" : "false"}
+                    className="w-full rounded-md border border-linea px-3 py-2 text-sm text-ink focus:border-primario focus:outline-none">
+                    <option value="true">Mis precios ya incluyen IVA</option>
+                    <option value="false">Mis precios son sin IVA (se agrega al cobrar)</option>
+                  </select>
+                  <p className="mt-1 text-xs text-ink/40">
+                    Esta opción aplica a todos los productos. Define si el precio que capturas ya tiene IVA dentro o si se calcula aparte al cobrar.
+                  </p>
                 </div>
-                <div className="rounded-lg border border-linea p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <p className="text-sm font-medium text-ink">IEPS</p>
-                      <p className="text-xs text-ink/50">Bebidas azucaradas, alcohol, tabacos</p>
-                    </div>
-                    <label className="relative inline-flex cursor-pointer items-center">
-                      <input type="checkbox" name="ieps_habilitado" value="true"
-                        defaultChecked={empresa.ieps_habilitado ?? false} className="sr-only peer" />
-                      <div className="h-6 w-11 rounded-full bg-linea peer-checked:bg-primario transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-5" />
-                    </label>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-ink/60 mb-1">Tasa IEPS %</label>
-                    <input name="ieps_porcentaje" type="number" min="0" max="100" step="0.01"
-                      defaultValue={empresa.ieps_porcentaje ?? 0} placeholder="8 = bebidas · 26.5 = tabacos"
-                      className="w-full rounded-md border border-linea px-3 py-2 text-sm text-ink focus:border-primario focus:outline-none" />
-                  </div>
+                <div className="rounded-lg border border-dashed border-primario/30 bg-primario/5 p-4">
+                  <p className="text-sm font-medium text-ink">IVA e IEPS por producto</p>
+                  <p className="mt-1 text-xs text-ink/60">
+                    Cada producto tiene su propia tasa de IVA e IEPS. Para cambiarlas, entra al producto y edita sus impuestos.
+                    Al crear un producto nuevo, se marca automáticamente con IVA 16%.
+                  </p>
                 </div>
-              </>
+              </div>
             ) : (
               <div className="flex flex-col gap-2">
-                <Campo label="IVA" valor={`${empresa.iva_porcentaje ?? 0}% — ${empresa.iva_incluido ? "incluido en precio" : "se agrega al cobrar"}`} />
-                <Campo label="IEPS" valor={empresa.ieps_habilitado ? `${empresa.ieps_porcentaje ?? 0}% habilitado` : "Deshabilitado"} />
+                <Campo label="Modo de precios" valor={empresa.precios_con_iva_incluido ? "Precios con IVA incluido" : "Precios sin IVA (se agrega al cobrar)"} />
+                <div className="rounded-lg border border-dashed border-ink/10 bg-ink/[0.02] p-3">
+                  <p className="text-xs text-ink/50">
+                    IVA e IEPS se configuran individualmente en cada producto.
+                  </p>
+                </div>
               </div>
             )}
           </>
