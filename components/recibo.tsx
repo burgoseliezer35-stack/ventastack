@@ -13,13 +13,6 @@ type Renglon = {
   iva_porcentaje?: number;
 };
 
-type DesgloseTasa = {
-  tipo: "IVA" | "IEPS";
-  pct: number;
-  base: number;
-  monto: number;
-};
-
 const ANCHOS = [58, 72, 80] as const;
 type Ancho = (typeof ANCHOS)[number];
 
@@ -37,22 +30,17 @@ type ReciboProps = {
   fecha: string;
   renglones: Renglon[];
   atendidoPor: string | null;
-  ivaPorcentaje: number;
   ivaIncluido: boolean;
-  iepsHabilitado: boolean;
-  iepsPorcentaje: number;
   anchoMm?: number;
   pieTicket?: string | null;
   efectivoRecibido?: number | null;
   cambio?: number | null;
-  desgloseTasas?: DesgloseTasa[];
 };
 
 export function Recibo({
   pedidoId, empresa, logoUrl, razonSocial, rfc, direccion, telefono,
-  cliente, metodoPago, total, fecha, renglones, atendidoPor,
-  ivaPorcentaje, ivaIncluido, iepsHabilitado, iepsPorcentaje,
-  anchoMm = 72, pieTicket, efectivoRecibido, cambio, desgloseTasas,
+  cliente, metodoPago, fecha, renglones, atendidoPor,
+  ivaIncluido, anchoMm = 72, pieTicket, efectivoRecibido, cambio,
 }: ReciboProps) {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [ancho, setAncho] = useState<Ancho>(
@@ -61,36 +49,42 @@ export function Recibo({
   const folio = pedidoId.slice(0, 8).toUpperCase();
   const anchoPx = ancho === 58 ? 210 : ancho === 72 ? 260 : 302;
 
-  // Cálculo de impuestos
-  // ── Cálculo fiscal correcto según SAT México ──────────────────
-  // Orden: Base → IEPS → (Base + IEPS) → IVA sobre (Base + IEPS)
+  // ── Cálculo fiscal por línea (cada producto tiene su IVA/IEPS) ──
   const r2 = (n: number) => Math.round(n * 100) / 100;
 
-  const subtotalBase = r2(renglones.reduce((s, r) => s + r.subtotal, 0));
-  let baseGravable = subtotalBase;
-  let montoIeps = 0;
-  let montoIva = 0;
-  let totalFinal = total;
+  let baseGravableTotal = 0;
+  let montoIepsTotal = 0;
+  let montoIvaTotal = 0;
 
-  if (ivaIncluido) {
-    // Precios ya incluyen IVA (y posiblemente IEPS)
-    // Extraer base sin impuestos
-    const factorTotal = 1
-      + (ivaPorcentaje / 100)
-      + (iepsHabilitado ? iepsPorcentaje / 100 : 0)
-      + (iepsHabilitado ? (iepsPorcentaje / 100) * (ivaPorcentaje / 100) : 0);
-    baseGravable = r2(subtotalBase / factorTotal);
-    montoIeps = iepsHabilitado ? r2(baseGravable * (iepsPorcentaje / 100)) : 0;
-    montoIva = r2((baseGravable + montoIeps) * (ivaPorcentaje / 100));
-    totalFinal = r2(baseGravable + montoIeps + montoIva);
-  } else {
-    // Precios sin impuestos — agregar IEPS primero, luego IVA sobre (base + IEPS)
-    baseGravable = subtotalBase;
-    montoIeps = iepsHabilitado ? r2(baseGravable * (iepsPorcentaje / 100)) : 0;
-    const baseConIeps = r2(baseGravable + montoIeps);
-    montoIva = ivaPorcentaje > 0 ? r2(baseConIeps * (ivaPorcentaje / 100)) : 0;
-    totalFinal = r2(baseConIeps + montoIva);
+  for (const ren of renglones) {
+    const ivaPct = (ren.iva_porcentaje ?? 16) / 100;
+    const iepsPct = (ren.ieps_porcentaje ?? 0) / 100;
+
+    let base: number;
+    let ieps: number;
+    let iva: number;
+
+    if (ivaIncluido) {
+      // Precio ya incluye impuestos — extraer base
+      const factor = 1 + iepsPct + ivaPct + iepsPct * ivaPct;
+      base = r2(ren.subtotal / factor);
+      ieps = r2(base * iepsPct);
+      iva = r2((base + ieps) * ivaPct);
+    } else {
+      base = ren.subtotal;
+      ieps = r2(base * iepsPct);
+      iva = r2((base + ieps) * ivaPct);
+    }
+
+    baseGravableTotal += base;
+    montoIepsTotal += ieps;
+    montoIvaTotal += iva;
   }
+
+  baseGravableTotal = r2(baseGravableTotal);
+  montoIepsTotal = r2(montoIepsTotal);
+  montoIvaTotal = r2(montoIvaTotal);
+  const totalFinal = r2(baseGravableTotal + montoIepsTotal + montoIvaTotal);
 
   useEffect(() => {
     QRCode.toDataURL(`${process.env.NEXT_PUBLIC_APP_URL ?? "https://ventastack.vercel.app"}/factura/${folio}`, { width: 120, margin: 1 })
@@ -142,48 +136,22 @@ export function Recibo({
 
       {/* Desglose de impuestos y TOTAL */}
       <div style={{ borderTop: "1px dashed #999", padding: "4px 0", fontSize: 10 }}>
-        {/* Subtotal e impuestos — desglose por tasa como Aurrera */}
+        {/* Subtotal e impuestos — desglose por línea sumado */}
         <div style={{ display: "flex", justifyContent: "space-between" }}>
           <span>Subtotal</span>
-          <span>${baseGravable.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          <span>${baseGravableTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </div>
-        {/* Si hay desglose por tasa, mostrarlo agrupado */}
-        {desgloseTasas && desgloseTasas.length > 0 ? (
-          <>
-            {desgloseTasas.filter(t => t.tipo === "IVA" && t.monto > 0).map(t => (
-              <div key={`iva_${t.pct}`} style={{ display: "flex", justifyContent: "space-between" }}>
-                <span>IVA {t.pct}%</span>
-                <span style={{ display: "flex", gap: 8 }}>
-                  <span style={{ color: "#999", fontSize: 9 }}>base ${t.base.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                  <span>${t.monto.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                </span>
-              </div>
-            ))}
-            {desgloseTasas.filter(t => t.tipo === "IEPS" && t.monto > 0).map(t => (
-              <div key={`ieps_${t.pct}`} style={{ display: "flex", justifyContent: "space-between" }}>
-                <span>IEPS {t.pct}%</span>
-                <span style={{ display: "flex", gap: 8 }}>
-                  <span style={{ color: "#999", fontSize: 9 }}>base ${t.base.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                  <span>${t.monto.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                </span>
-              </div>
-            ))}
-          </>
-        ) : (
-          <>
-            {ivaPorcentaje > 0 && (
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span>IVA {ivaPorcentaje}%</span>
-                <span>${montoIva.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-              </div>
-            )}
-            {iepsHabilitado && montoIeps > 0 && (
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span>IEPS {iepsPorcentaje}%</span>
-                <span>${montoIeps.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-              </div>
-            )}
-          </>
+        {montoIvaTotal > 0 && (
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span>IVA</span>
+            <span>${montoIvaTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          </div>
+        )}
+        {montoIepsTotal > 0 && (
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span>IEPS</span>
+            <span>${montoIepsTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          </div>
         )}
 
         {/* Efectivo y cambio — antes del TOTAL */}
