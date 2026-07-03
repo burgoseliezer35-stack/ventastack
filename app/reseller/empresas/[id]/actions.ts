@@ -137,11 +137,12 @@ export async function actualizarTipoNegocio(companyId: string, formData: FormDat
   const tiposNegocio = formData.getAll("tipos_negocio") as string[];
   const buscadorProductos = formData.get("buscador_productos") as string;
 
-  // Mantiene compatibilidad: tipo_negocio = primer tipo seleccionado
-  const tipoNegocio = tiposNegocio[0] ?? "tienda";
-
+  // Solo escribimos en tipos_negocio (array). La columna vieja
+  // tipo_negocio (texto simple) tiene un CHECK que solo acepta 4
+  // de los 8 tipos — si mandamos "farmacia" ahí, Postgres rechaza
+  // TODO el UPDATE silenciosamente (ni tipos_negocio ni buscador
+  // se guardan). Por eso la dejamos fuera.
   await supabase.from("companies").update({
-    tipo_negocio: tipoNegocio,
     tipos_negocio: tiposNegocio.length > 0 ? tiposNegocio : ["tienda"],
     buscador_productos: buscadorProductos || undefined,
   }).eq("id", companyId);
