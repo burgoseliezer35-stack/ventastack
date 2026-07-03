@@ -15,7 +15,7 @@ export default async function EmpresaDetallePage({
 
   const { data: empresa, error: errorEmpresa } = await supabase
     .from("companies")
-    .select("id, name, created_at, precio_mensual, activa")
+    .select("id, name, created_at, precio_mensual, activa, tipos_negocio, buscador_productos, buscadores_config")
     .eq("id", id)
     .single();
 
@@ -23,40 +23,9 @@ export default async function EmpresaDetallePage({
     notFound();
   }
 
-  // Columnas nuevas — cargadas por separado para no romper si faltan migraciones
-  let tipoNegocio: string | null = "tienda";
-  let tiposNegocio: string[] = ["tienda"];
-  let buscadorProductos: string | null = "openfoodfacts";
-  let buscadoresConfig: Record<string, { activo: boolean; api_key: string | null }> | null = null;
-
-  try {
-    const { data: extra } = await supabase
-      .from("companies")
-      .select("tipo_negocio, buscador_productos, buscadores_config")
-      .eq("id", id)
-      .single();
-    if (extra) {
-      tipoNegocio = extra.tipo_negocio ?? "tienda";
-      buscadorProductos = extra.buscador_productos ?? "openfoodfacts";
-      buscadoresConfig = extra.buscadores_config ?? null;
-    }
-  } catch { /* migración no corrida aún */ }
-
-  // tipos_negocio — columna de migración 035
-  try {
-    const { data: extra2 } = await supabase
-      .from("companies")
-      .select("tipos_negocio")
-      .eq("id", id)
-      .single();
-    if (extra2 && Array.isArray((extra2 as { tipos_negocio?: string[] }).tipos_negocio)) {
-      tiposNegocio = (extra2 as { tipos_negocio: string[] }).tipos_negocio;
-    } else {
-      tiposNegocio = tipoNegocio ? [tipoNegocio] : ["tienda"];
-    }
-  } catch {
-    tiposNegocio = tipoNegocio ? [tipoNegocio] : ["tienda"];
-  }
+  const tiposNegocio: string[] = Array.isArray(empresa.tipos_negocio) ? empresa.tipos_negocio : ["tienda"];
+  const buscadorProductos: string = (empresa.buscador_productos as string) ?? "openfoodfacts";
+  const buscadoresConfig = (empresa.buscadores_config as Record<string, { activo: boolean; api_key: string | null }>) ?? null;
 
   let pagos: { id: string; monto: number; nota: string | null; created_at: string }[] = [];
   try {
@@ -185,14 +154,14 @@ export default async function EmpresaDetallePage({
         </div>
         <div className="grid grid-cols-2 gap-2">
           {[
-            { val: "tienda", label: "🏪 Tienda / Abarrotes" },
-            { val: "distribuidor", label: "🚚 Distribuidor / Ruta" },
-            { val: "restaurante", label: "🍽️ Restaurante" },
-            { val: "taller", label: "🔧 Taller / Servicio" },
-            { val: "farmacia", label: "💊 Farmacia" },
-            { val: "ferreteria", label: "🔨 Ferretería" },
-            { val: "tecnologia", label: "💻 Tecnología" },
-            { val: "papeleria", label: "📚 Papelería" },
+            { val: "tienda", label: "Tienda / Abarrotes" },
+            { val: "distribuidor", label: "Distribuidor / Ruta" },
+            { val: "restaurante", label: "Restaurante" },
+            { val: "taller", label: "Taller / Servicio" },
+            { val: "farmacia", label: "Farmacia" },
+            { val: "ferreteria", label: "Ferretería" },
+            { val: "tecnologia", label: "Tecnología" },
+            { val: "papeleria", label: "Papelería" },
           ].map(({ val, label }) => {
             const activo = tiposNegocio.includes(val);
             return (
