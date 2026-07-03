@@ -24,20 +24,22 @@ export default async function ReciboPage({
 
   if (!pedido) notFound();
 
-  // Datos de la empresa
+  // Datos de la empresa — select directo para traer todas las columnas extendidas
   const companyId = (pedido as { company_id?: string }).company_id;
   let empresa: {
     name: string; logo_url: string | null; rfc: string | null;
     razon_social: string | null; calle: string | null; colonia: string | null;
     ciudad: string | null; estado_empresa: string | null; codigo_postal: string | null;
-    telefono: string | null; precios_con_iva_incluido: boolean | null;
+    telefono: string | null; iva_porcentaje: number | null; iva_incluido: boolean | null;
+    ieps_habilitado: boolean | null; ieps_porcentaje: number | null;
     pie_ticket?: string | null;
   } | null = null;
 
   if (companyId) {
+    // Un solo select con todos los campos para evitar que RLS bloquee alguno
     const { data: emp } = await supabase
       .from("companies")
-      .select("name, logo_url, rfc, razon_social, calle, colonia, ciudad, estado_empresa, codigo_postal, telefono, precios_con_iva_incluido, pie_ticket")
+      .select("name, logo_url, rfc, razon_social, calle, colonia, ciudad, estado_empresa, codigo_postal, telefono, iva_porcentaje, iva_incluido, ieps_habilitado, ieps_porcentaje, pie_ticket")
       .eq("id", companyId)
       .single();
 
@@ -54,7 +56,10 @@ export default async function ReciboPage({
         estado_empresa: (e.estado_empresa as string | null) ?? null,
         codigo_postal: (e.codigo_postal as string | null) ?? null,
         telefono: (e.telefono as string | null) ?? null,
-        precios_con_iva_incluido: (e.precios_con_iva_incluido as boolean | null) ?? true,
+        iva_porcentaje: (e.iva_porcentaje as number | null) ?? null,
+        iva_incluido: (e.iva_incluido as boolean | null) ?? null,
+        ieps_habilitado: (e.ieps_habilitado as boolean | null) ?? null,
+        ieps_porcentaje: (e.ieps_porcentaje as number | null) ?? null,
         pie_ticket: (e.pie_ticket as string | null) ?? null,
       };
     }
@@ -62,7 +67,7 @@ export default async function ReciboPage({
 
   const { data: detalle } = await supabase
     .from("detalle_pedidos")
-    .select("cantidad, precio_unitario, subtotal, iva_porcentaje, ieps_porcentaje, productos(nombre)")
+    .select("cantidad, precio_unitario, subtotal, productos(nombre)")
     .eq("pedido_id", id);
 
   // Nombre del vendedor — preferir full_name, si es email usar la parte antes del @
@@ -92,8 +97,6 @@ export default async function ReciboPage({
     cantidad: d.cantidad,
     precioUnitario: d.precio_unitario,
     subtotal: d.subtotal,
-    ivaPorcentaje: (d as { iva_porcentaje?: number }).iva_porcentaje ?? 16,
-    iepsPorcentaje: (d as { ieps_porcentaje?: number }).ieps_porcentaje ?? 0,
   }));
 
   const direccion = [
@@ -116,7 +119,10 @@ export default async function ReciboPage({
       fecha={pedido.created_at}
       renglones={renglones}
       atendidoPor={resolverNombreVendedor()}
-      ivaIncluido={empresa?.precios_con_iva_incluido ?? true}
+      ivaPorcentaje={empresa?.iva_porcentaje ?? 0}
+      ivaIncluido={empresa?.iva_incluido ?? true}
+      iepsHabilitado={empresa?.ieps_habilitado ?? false}
+      iepsPorcentaje={empresa?.ieps_porcentaje ?? 0}
       pieTicket={empresa?.pie_ticket ?? null}
       efectivoRecibido={(pedido as { efectivo_recibido?: number | null }).efectivo_recibido ?? null}
       cambio={(pedido as { cambio?: number | null }).cambio ?? null}
