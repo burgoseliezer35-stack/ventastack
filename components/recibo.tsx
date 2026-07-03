@@ -39,8 +39,8 @@ type ReciboProps = {
 
 export function Recibo({
   pedidoId, empresa, logoUrl, razonSocial, rfc, direccion, telefono,
-  cliente, metodoPago, fecha, renglones, atendidoPor,
-  ivaIncluido, anchoMm = 72, pieTicket, efectivoRecibido, cambio,
+  cliente, metodoPago, total, fecha, renglones, atendidoPor,
+  anchoMm = 72, pieTicket, efectivoRecibido, cambio,
 }: ReciboProps) {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [ancho, setAncho] = useState<Ancho>(
@@ -49,42 +49,21 @@ export function Recibo({
   const folio = pedidoId.slice(0, 8).toUpperCase();
   const anchoPx = ancho === 58 ? 210 : ancho === 72 ? 260 : 302;
 
-  // ── Cálculo fiscal por línea (cada producto tiene su IVA/IEPS) ──
+  // ── Cálculo fiscal ──────────────────────────────────────────
+  // El total viene guardado desde el servidor (no recalcular aquí
+  // — los registros viejos no tienen iva_porcentaje por línea y
+  // recalcular da 0). Usamos los subtotales del detalle para la
+  // base y el total guardado del pedido para mostrar.
   const r2 = (n: number) => Math.round(n * 100) / 100;
 
-  let baseGravableTotal = 0;
-  let montoIepsTotal = 0;
-  let montoIvaTotal = 0;
+  const subtotalBase = r2(renglones.reduce((s, ren) => s + ren.subtotal, 0));
 
-  for (const ren of renglones) {
-    const ivaPct = (ren.iva_porcentaje ?? 16) / 100;
-    const iepsPct = (ren.ieps_porcentaje ?? 0) / 100;
-
-    let base: number;
-    let ieps: number;
-    let iva: number;
-
-    if (ivaIncluido) {
-      // Precio ya incluye impuestos — extraer base
-      const factor = 1 + iepsPct + ivaPct + iepsPct * ivaPct;
-      base = r2(ren.subtotal / factor);
-      ieps = r2(base * iepsPct);
-      iva = r2((base + ieps) * ivaPct);
-    } else {
-      base = ren.subtotal;
-      ieps = r2(base * iepsPct);
-      iva = r2((base + ieps) * ivaPct);
-    }
-
-    baseGravableTotal += base;
-    montoIepsTotal += ieps;
-    montoIvaTotal += iva;
-  }
-
-  baseGravableTotal = r2(baseGravableTotal);
-  montoIepsTotal = r2(montoIepsTotal);
-  montoIvaTotal = r2(montoIvaTotal);
-  const totalFinal = r2(baseGravableTotal + montoIepsTotal + montoIvaTotal);
+  // IVA e IEPS: derivar del total guardado vs subtotal base
+  // para mostrar el desglose correcto sin recalcular.
+  const totalFinal = r2(total);
+  const diferencia = r2(totalFinal - subtotalBase);
+  const montoIvaTotal = diferencia > 0 ? diferencia : 0;
+  const montoIepsTotal = 0; // desglose fino queda para cuando todos los pedidos tengan el campo
 
   useEffect(() => {
     QRCode.toDataURL(`${process.env.NEXT_PUBLIC_APP_URL ?? "https://ventastack.vercel.app"}/factura/${folio}`, { width: 120, margin: 1 })
@@ -136,10 +115,9 @@ export function Recibo({
 
       {/* Desglose de impuestos y TOTAL */}
       <div style={{ borderTop: "1px dashed #999", padding: "4px 0", fontSize: 10 }}>
-        {/* Subtotal e impuestos — desglose por línea sumado */}
         <div style={{ display: "flex", justifyContent: "space-between" }}>
           <span>Subtotal</span>
-          <span>${baseGravableTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          <span>${subtotalBase.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </div>
         {montoIvaTotal > 0 && (
           <div style={{ display: "flex", justifyContent: "space-between" }}>
