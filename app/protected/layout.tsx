@@ -23,7 +23,8 @@ export default async function ProtectedLayout({
     .from("profiles")
     .select("full_name, role, company_id")
     .eq("id", userId)
-    .single();
+    .limit(1)
+    .maybeSingle();
 
   // Si esto falla, antes el código se caía en silencio a "Usuario"
   // y un menú vacío — sin decir por qué. Ahora, si de verdad hay un
@@ -49,7 +50,8 @@ export default async function ProtectedLayout({
     .from("companies")
     .select("activa, name, tipo_negocio, tipos_negocio")
     .eq("id", perfil.company_id)
-    .single();
+    .limit(1)
+    .maybeSingle();
 
   // Si el reseller desactivó esta empresa (no pagó), nadie de ahí
   // entra a nada — ni admin, ni cajero, ni vendedor — hasta que se
@@ -73,7 +75,7 @@ export default async function ProtectedLayout({
   return (
     <>
       <ServiceWorkerRegistrar />
-      <div className="flex min-h-screen flex-col bg-paper md:flex-row print:hidden">
+      <div className="flex h-full min-h-screen flex-col bg-paper md:flex-row print:hidden overscroll-none">
       <Sidebar
         nombre={perfil.full_name ?? "Usuario"}
         rol={perfil.role ?? "—"}
@@ -83,7 +85,7 @@ export default async function ProtectedLayout({
         tipoNegocio={empresa?.tipo_negocio ?? "tienda"}
         tiposNegocio={(empresa as {tipos_negocio?: string[] | null})?.tipos_negocio ?? []}
       />
-      <main className="flex-1 px-4 py-6 md:px-8 md:py-8">{children}</main>
+      <main className="flex-1 px-4 py-6 pb-24 md:px-8 md:py-8 md:pb-8">{children}</main>
       {esVendedor && <CompartirUbicacion />}
     </div>
     </>
