@@ -72,6 +72,12 @@ export default async function ProtectedLayout({
   const esAdmin = perfil.role === "admin";
   const esVendedor = perfil.role === "vendedor";
 
+  // Módulos que puede ver este usuario según su rol y los permisos
+  // configurados por el admin en Configuración → Permisos.
+  // Admin siempre recibe todos — la RPC lo maneja internamente.
+  const { data: modulosData } = await supabase.rpc("mis_modulos_activos");
+  const modulos: string[] = modulosData ?? [];
+
   return (
     <>
       <ServiceWorkerRegistrar />
@@ -81,6 +87,7 @@ export default async function ProtectedLayout({
         rol={perfil.role ?? "—"}
         esAdmin={esAdmin}
         esVendedor={esVendedor}
+        modulos={modulos}
         nombreEmpresa={empresa?.name ?? undefined}
         tipoNegocio={empresa?.tipo_negocio ?? "tienda"}
         tiposNegocio={(empresa as {tipos_negocio?: string[] | null})?.tipos_negocio ?? []}
