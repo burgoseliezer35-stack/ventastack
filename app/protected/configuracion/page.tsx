@@ -4,6 +4,7 @@ import Link from "next/link";
 import { guardarConfiguracion } from "./actions";
 import { whatsappDisponible } from "@/lib/whatsapp";
 import { ConfiguracionTabs } from "@/components/configuracion-tabs";
+import { PermisosEditor } from "./permisos";
 
 export default async function ConfiguracionPage({
   searchParams,
@@ -54,8 +55,23 @@ export default async function ConfiguracionPage({
 
   const empresa = { ...empresaBase, ...empresaExtendida };
 
+  // Permisos por rol
+  const { data: permisosRaw } = await supabase
+    .from("roles_permisos")
+    .select("rol, modulo, activo")
+    .eq("company_id", miPerfil.company_id)
+    .order("modulo");
+
+  const cajeroPermisos = (permisosRaw ?? [])
+    .filter(p => p.rol === "cajero")
+    .map(p => ({ modulo: p.modulo, activo: p.activo }));
+
+  const vendedorPermisos = (permisosRaw ?? [])
+    .filter(p => p.rol === "vendedor")
+    .map(p => ({ modulo: p.modulo, activo: p.activo }));
+
   return (
-    <div className="flex max-w-xl flex-col gap-4">
+    <div className="flex max-w-xl flex-col gap-6">
       <div>
         <h1 className="text-xl font-bold text-ink">Configuración</h1>
         <p className="text-sm text-ink/60">Datos de tu negocio, impuestos, facturación y alertas.</p>
@@ -72,6 +88,16 @@ export default async function ConfiguracionPage({
         guardado={!!guardado}
         errorParam={errorParam ?? null}
         guardarConfiguracion={guardarConfiguracion}
+      />
+
+      {/* Separador */}
+      <div className="border-t border-linea pt-2" />
+
+      {/* Permisos por rol */}
+      <PermisosEditor
+        cajero={cajeroPermisos}
+        vendedor={vendedorPermisos}
+        companyId={miPerfil.company_id}
       />
     </div>
   );
