@@ -67,7 +67,9 @@ export default async function ReciboPage({
 
   const { data: detalle } = await supabase
     .from("detalle_pedidos")
-    .select("cantidad, precio_unitario, subtotal, productos(nombre)")
+    // iva_porcentaje e ieps_porcentaje existen desde migración 045.
+    // Para pedidos anteriores vendrán NULL — se maneja con fallback abajo.
+    .select("cantidad, precio_unitario, subtotal, iva_porcentaje, ieps_porcentaje, productos(nombre, iva_porcentaje, ieps_porcentaje)")
     .eq("pedido_id", id);
 
   // Nombre del vendedor — preferir full_name, si es email usar la parte antes del @
@@ -92,12 +94,72 @@ export default async function ReciboPage({
 
   const cliente = normalizar(pedido.clientes as unknown as { nombre: string } | null);
 
-  const renglones = (detalle ?? []).map((d) => ({
-    nombre: normalizar(d.productos as unknown as { nombre: string } | null)?.nombre ?? "Producto",
-    cantidad: d.cantidad,
-    precioUnitario: d.precio_unitario,
-    subtotal: d.subtotal,
-  }));
+  const ivaIncluido = empresa?.iva_incluido ?? true;
+
+  const renglones = (detalle ?? []).map((d) => {
+    const prod = normalizar(d.productos as unknown as { nombre: string; iva_porcentaje?: number | null; ieps_porcentaje?: number | null } | null);
+    // Fallback: si el detalle no tiene el % (pedido viejo anterior a la 045),
+    // usamos el del producto; si tampoco, IVA 16% / IEPS 0%.
+    const ivaPct: number = (d as { iva_porcentaje?: number | null }).iva_porcentaje
+      ?? prod?.iva_porcentaje
+      ?? 16;
+    const iepsPct: number = (d as { ieps_porcentaje?: number | null }).ieps_porcentaje
+      ?? prod?.ieps_porcentaje
+      ?? 0;
+    return {
+      nombre: prod?.nombre ?? "Producto",
+      cantidad: d.cantidad,
+      precioUnitario: d.precio_unitario,
+      subtotal: d.subtotal,
+      iva_porcentaje: ivaPct,
+      ieps_porcentaje: iepsPct,
+    };
+  });
+
+  // ── Desglose de impuestos por tasa (estilo Bodega Aurrera) ──
+  // Orden SAT: Base → IEPS sobre base → IVA sobre (base + IEPS)
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+  const mapaIva: Record<number, { base: number; monto: number }> = {};
+  const mapaIeps: Record<number, { base: number; monto: number }> = {};
+
+  for (const ren of renglones) {
+    const ivaPct = ren.iva_porcentaje / 100;
+    const iepsPct = ren.ieps_porcentaje / 100;
+
+    // Extraer base sin impuestos (si precio ya los incluye)
+    const base = ivaIncluido
+      ? r2(ren.subtotal / (1 + iepsPct + ivaPct + iepsPct * ivaPct))
+      : ren.subtotal;
+
+    const iepsMonto = r2(base * iepsPct);
+    const ivaMonto = r2((base + iepsMonto) * ivaPct);
+
+    if (ren.iva_porcentaje > 0) {
+      if (!mapaIva[ren.iva_porcentaje]) mapaIva[ren.iva_porcentaje] = { base: 0, monto: 0 };
+      mapaIva[ren.iva_porcentaje].base = r2(mapaIva[ren.iva_porcentaje].base + base);
+      mapaIva[ren.iva_porcentaje].monto = r2(mapaIva[ren.iva_porcentaje].monto + ivaMonto);
+    }
+    if (ren.ieps_porcentaje > 0) {
+      if (!mapaIeps[ren.ieps_porcentaje]) mapaIeps[ren.ieps_porcentaje] = { base: 0, monto: 0 };
+      mapaIeps[ren.ieps_porcentaje].base = r2(mapaIeps[ren.ieps_porcentaje].base + base);
+      mapaIeps[ren.ieps_porcentaje].monto = r2(mapaIeps[ren.ieps_porcentaje].monto + iepsMonto);
+    }
+  }
+
+  const desgloseTasas = [
+    ...Object.entries(mapaIeps).map(([pct, d]) => ({
+      tipo: "IEPS" as const,
+      pct: Number(pct),
+      base: d.base,
+      monto: d.monto,
+    })),
+    ...Object.entries(mapaIva).map(([pct, d]) => ({
+      tipo: "IVA" as const,
+      pct: Number(pct),
+      base: d.base,
+      monto: d.monto,
+    })),
+  ];
 
   const direccion = [
     empresa?.calle, empresa?.colonia, empresa?.ciudad,
@@ -120,12 +182,13 @@ export default async function ReciboPage({
       renglones={renglones}
       atendidoPor={resolverNombreVendedor()}
       ivaPorcentaje={empresa?.iva_porcentaje ?? 0}
-      ivaIncluido={empresa?.iva_incluido ?? true}
+      ivaIncluido={ivaIncluido}
       iepsHabilitado={empresa?.ieps_habilitado ?? false}
       iepsPorcentaje={empresa?.ieps_porcentaje ?? 0}
       pieTicket={empresa?.pie_ticket ?? null}
       efectivoRecibido={(pedido as { efectivo_recibido?: number | null }).efectivo_recibido ?? null}
       cambio={(pedido as { cambio?: number | null }).cambio ?? null}
+      desgloseTasas={desgloseTasas}
     />
   );
 }
