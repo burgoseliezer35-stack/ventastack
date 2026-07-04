@@ -46,6 +46,7 @@ export default async function PosPage() {
   const { data: clientes } = await supabase
     .from("clientes")
     .select("id, nombre")
+    .eq("activo", true)
     .order("nombre");
 
   return (
