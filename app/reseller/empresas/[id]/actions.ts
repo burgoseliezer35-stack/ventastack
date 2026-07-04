@@ -93,23 +93,17 @@ export async function borrarEmpresa(
       return { ok: false, tieneHistorial: true };
     }
 
-    // Borrar en cascada: detalle_pedidos, pedidos, profiles, y finalmente la empresa
-    if (tieneHistorial) {
-      // Borrar detalle_pedidos de esta empresa
-      const { data: pedidos } = await admin
-        .from("pedidos")
-        .select("id")
-        .eq("company_id", companyId);
-      if (pedidos && pedidos.length > 0) {
-        const ids = pedidos.map((p: { id: string }) => p.id);
-        await admin.from("detalle_pedidos").delete().in("pedido_id", ids);
-      }
-      await admin.from("pedidos").delete().eq("company_id", companyId);
+    // Borrar todo en cascada usando la RPC que maneja el orden
+    // correcto de todas las tablas con FK a companies.
+    const { error: rpcError } = await admin
+      .rpc("borrar_empresa_completa", { p_company_id: companyId });
+
+    if (rpcError) {
+      console.error("borrarEmpresa RPC error:", rpcError);
+      return { ok: false, error: rpcError.message };
     }
 
-    // Borrar profiles de esta empresa Y los usuarios de auth.users
-    // (si no se borran de auth, el correo queda "ocupado" para siempre
-    // y no se puede reusar al crear otra empresa).
+    // Borrar usuarios de auth.users (la RPC solo borra profiles)
     const { data: perfiles } = await admin
       .from("profiles")
       .select("id")
@@ -120,10 +114,6 @@ export async function borrarEmpresa(
         await admin.auth.admin.deleteUser(p.id);
       }
     }
-    await admin.from("profiles").delete().eq("company_id", companyId);
-
-    // Borrar la empresa
-    await admin.from("companies").delete().eq("id", companyId);
 
     revalidatePath("/reseller");
     return { ok: true };
