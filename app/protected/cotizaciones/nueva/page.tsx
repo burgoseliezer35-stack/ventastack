@@ -26,6 +26,7 @@ export default async function NuevaCotizacionPage() {
     .from("clientes")
     .select("id, nombre")
     .eq("company_id", perfil?.company_id)
+    .eq("activo", true)
     .order("nombre");
 
   return (
