@@ -119,9 +119,12 @@ export function Sidebar({ nombre, rol, esAdmin, modulos, nombreEmpresa, tipoNego
     });
   }
   if (puede("clientes")) {
+    // Admin y cajero → lista completa con opción de crear
+    // Vendedor → solo sus clientes asignados (RLS filtra)
+    const rolEsVendedor = rol === "vendedor";
     enlaces.push({
       tipo: "enlace",
-      href: esAdmin ? "/protected/clientes" : "/protected/mis-clientes",
+      href: rolEsVendedor ? "/protected/mis-clientes" : "/protected/clientes",
       etiqueta: "Clientes",
       Icono: Users,
     });
