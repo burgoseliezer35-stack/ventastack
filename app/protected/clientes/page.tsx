@@ -17,13 +17,20 @@ export default async function ClientesPage() {
     .from("profiles")
     .select("role")
     .eq("id", userId)
-    .single();
+    .limit(1)
+    .maybeSingle();
 
-  if (miPerfil?.role !== "admin") {
+  // Vendedor va a su vista propia (RLS filtra sus clientes)
+  if (miPerfil?.role === "vendedor") {
+    redirect("/protected/mis-clientes");
+  }
+
+  // Cajero y admin pueden ver la lista completa
+  if (miPerfil?.role !== "admin" && miPerfil?.role !== "cajero") {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-gray-50 px-4 text-center">
         <p className="text-sm text-gray-600">
-          Solo el admin de la empresa puede ver esta página.
+          No tienes permiso para ver esta página.
         </p>
         <Link href="/protected" className="text-sm text-emerald-600 hover:underline">
           Regresar
@@ -31,6 +38,8 @@ export default async function ClientesPage() {
       </div>
     );
   }
+
+  const esAdmin = miPerfil?.role === "admin";
 
   const { data: clientes } = await supabase
     .from("clientes")
@@ -117,27 +126,30 @@ export default async function ClientesPage() {
               className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
             />
           </div>
-          <div>
-            <label
-              htmlFor="vendedor_id"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Asignar a vendedor (opcional)
-            </label>
-            <select
-              id="vendedor_id"
-              name="vendedor_id"
-              defaultValue=""
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-            >
-              <option value="">Sin asignar (mostrador)</option>
-              {vendedores?.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.full_name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Solo admin puede asignar clientes a un vendedor de ruta */}
+          {esAdmin && (
+            <div>
+              <label
+                htmlFor="vendedor_id"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Asignar a vendedor (opcional)
+              </label>
+              <select
+                id="vendedor_id"
+                name="vendedor_id"
+                defaultValue=""
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              >
+                <option value="">Sin asignar (mostrador)</option>
+                {vendedores?.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.full_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <button
             type="submit"
             className="w-full rounded-md bg-emerald-600 px-4 py-2 font-medium text-white transition hover:bg-emerald-700"
