@@ -76,7 +76,8 @@ export async function borrarEmpresa(
       .from("profiles")
       .select("es_superadmin")
       .eq("id", claims.claims.sub)
-      .single();
+      .limit(1)
+      .maybeSingle();
     if (!perfil?.es_superadmin) return { ok: false, error: "Sin permisos" };
 
     // Contar pedidos
