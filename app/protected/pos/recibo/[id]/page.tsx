@@ -67,9 +67,7 @@ export default async function ReciboPage({
 
   const { data: detalle } = await supabase
     .from("detalle_pedidos")
-    // iva_porcentaje e ieps_porcentaje existen desde migración 045.
-    // Para pedidos anteriores vendrán NULL — se maneja con fallback abajo.
-    .select("cantidad, precio_unitario, subtotal, iva_porcentaje, ieps_porcentaje, productos(nombre, iva_porcentaje, ieps_porcentaje)")
+    .select("cantidad, precio_unitario, subtotal, productos(nombre, iva_porcentaje, ieps_porcentaje)")
     .eq("pedido_id", id);
 
   // Nombre del vendedor — preferir full_name, si es email usar la parte antes del @
@@ -100,12 +98,8 @@ export default async function ReciboPage({
     const prod = normalizar(d.productos as unknown as { nombre: string; iva_porcentaje?: number | null; ieps_porcentaje?: number | null } | null);
     // Fallback: si el detalle no tiene el % (pedido viejo anterior a la 045),
     // usamos el del producto; si tampoco, IVA 16% / IEPS 0%.
-    const ivaPct: number = (d as { iva_porcentaje?: number | null }).iva_porcentaje
-      ?? prod?.iva_porcentaje
-      ?? 16;
-    const iepsPct: number = (d as { ieps_porcentaje?: number | null }).ieps_porcentaje
-      ?? prod?.ieps_porcentaje
-      ?? 0;
+    const ivaPct: number = prod?.iva_porcentaje ?? 16;
+    const iepsPct: number = prod?.ieps_porcentaje ?? 0;
     return {
       nombre: prod?.nombre ?? "Producto",
       cantidad: d.cantidad,
