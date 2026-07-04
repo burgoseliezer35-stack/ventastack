@@ -39,7 +39,7 @@ export default async function ReciboPage({
     // Un solo select con todos los campos para evitar que RLS bloquee alguno
     const { data: emp } = await supabase
       .from("companies")
-      .select("name, logo_url, rfc, razon_social, calle, colonia, ciudad, estado_empresa, codigo_postal, telefono, iva_porcentaje, iva_incluido, ieps_habilitado, ieps_porcentaje, pie_ticket")
+      .select("name, logo_url, rfc, razon_social, calle, colonia, ciudad, estado_empresa, codigo_postal, telefono, _deprecated_iva_porcentaje, _deprecated_iva_incluido, _deprecated_ieps_habilitado, _deprecated_ieps_porcentaje, pie_ticket")
       .eq("id", companyId)
       .single();
 
@@ -56,10 +56,10 @@ export default async function ReciboPage({
         estado_empresa: (e.estado_empresa as string | null) ?? null,
         codigo_postal: (e.codigo_postal as string | null) ?? null,
         telefono: (e.telefono as string | null) ?? null,
-        iva_porcentaje: (e.iva_porcentaje as number | null) ?? null,
-        iva_incluido: (e.iva_incluido as boolean | null) ?? null,
-        ieps_habilitado: (e.ieps_habilitado as boolean | null) ?? null,
-        ieps_porcentaje: (e.ieps_porcentaje as number | null) ?? null,
+        iva_porcentaje: (e._deprecated_iva_porcentaje as number | null) ?? null,
+        iva_incluido: (e._deprecated_iva_incluido as boolean | null) ?? null,
+        ieps_habilitado: (e._deprecated_ieps_habilitado as boolean | null) ?? null,
+        ieps_porcentaje: (e._deprecated_ieps_porcentaje as number | null) ?? null,
         pie_ticket: (e.pie_ticket as string | null) ?? null,
       };
     }
