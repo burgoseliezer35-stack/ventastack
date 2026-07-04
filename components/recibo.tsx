@@ -142,30 +142,35 @@ export function Recibo({
 
       {/* Desglose de impuestos y TOTAL */}
       <div style={{ borderTop: "1px dashed #999", padding: "4px 0", fontSize: 10 }}>
-        {/* Subtotal e impuestos — desglose por tasa como Aurrera */}
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <span>Subtotal</span>
-          <span>${baseGravable.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-        </div>
-        {/* Si hay desglose por tasa, mostrarlo agrupado */}
+        {/* Subtotal = base sin impuestos. Si hay desglose por tasa (nuevo modelo),
+            sumamos las bases de cada tasa. Si no, usamos baseGravable del cálculo global. */}
+        {(() => {
+          const totalImpuestos = desgloseTasas && desgloseTasas.length > 0
+            ? r2(desgloseTasas.reduce((s, t) => s + t.monto, 0))
+            : 0;
+          // Subtotal = total - impuestos: así siempre cuadra exacto
+          // (evita diferencias de redondeo por línea)
+          const subtotalMostrar = r2(totalFinal - totalImpuestos);
+          return (
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span>Subtotal</span>
+              <span>${subtotalMostrar.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+          );
+        })()}
+        {/* Desglose de impuestos por tasa */}
         {desgloseTasas && desgloseTasas.length > 0 ? (
           <>
             {desgloseTasas.filter(t => t.tipo === "IVA" && t.monto > 0).map(t => (
               <div key={`iva_${t.pct}`} style={{ display: "flex", justifyContent: "space-between" }}>
                 <span>IVA {t.pct}%</span>
-                <span style={{ display: "flex", gap: 8 }}>
-                  <span style={{ color: "#999", fontSize: 9 }}>base ${t.base.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                  <span>${t.monto.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                </span>
+                <span>${t.monto.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
             ))}
             {desgloseTasas.filter(t => t.tipo === "IEPS" && t.monto > 0).map(t => (
               <div key={`ieps_${t.pct}`} style={{ display: "flex", justifyContent: "space-between" }}>
                 <span>IEPS {t.pct}%</span>
-                <span style={{ display: "flex", gap: 8 }}>
-                  <span style={{ color: "#999", fontSize: 9 }}>base ${t.base.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                  <span>${t.monto.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                </span>
+                <span>${t.monto.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
             ))}
           </>
