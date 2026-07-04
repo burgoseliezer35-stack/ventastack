@@ -21,7 +21,8 @@ export default async function ResellerLayout({
     .from("profiles")
     .select("es_superadmin")
     .eq("id", userId)
-    .single();
+    .limit(1)
+    .maybeSingle();
 
   // Si no eres el dueño de la plataforma, esta puerta no es para
   // ti — te regresamos a tu panel normal, sin mensaje de error
