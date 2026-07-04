@@ -93,7 +93,7 @@ export async function GET(request: Request) {
   if (!codigo) return NextResponse.json({ error: "Falta el código" }, { status: 400 });
 
   const userId = data.claims.sub as string;
-  const { data: perfil } = await supabase.from("profiles").select("company_id").eq("id", userId).single();
+  const { data: perfil } = await supabase.from("profiles").select("company_id").eq("id", userId).limit(1).maybeSingle();
 
   // 1. Buscar en caché (filtrado por empresa para no mezclar resultados)
   if (perfil?.company_id) {
