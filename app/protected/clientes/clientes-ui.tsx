@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Search, Plus, Pencil, Trash2, X, Phone, Mail, MapPin, User, Building2 } from "lucide-react";
+import { Search, Plus, Pencil, Trash2, X, Check, Phone, Mail, MapPin, User, Building2 } from "lucide-react";
 
 type Cliente = {
   id: string;
@@ -19,6 +19,7 @@ type Cliente = {
   limite_credito: number;
   saldo_actual: number;
   bloqueado: boolean;
+  activo: boolean;
   vendedor_id: string | null;
 };
 
@@ -214,12 +215,26 @@ export function ClientesUI({
   const [editando, setEditando] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [verInactivos, setVerInactivos] = useState(false);
 
-  const filtrados = clientes.filter(c =>
-    c.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-    (c.rfc ?? "").toLowerCase().includes(busqueda.toLowerCase()) ||
-    (c.telefono ?? "").includes(busqueda)
-  );
+  const filtrados = clientes.filter(c => {
+    if (!verInactivos && !c.activo) return false;
+    return c.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+      (c.rfc ?? "").toLowerCase().includes(busqueda.toLowerCase()) ||
+      (c.telefono ?? "").includes(busqueda);
+  });
+
+  const toggleActivo = (id: string, activo: boolean) => {
+    const accion = activo ? "desactivar" : "activar";
+    if (!confirm(`¿${accion.charAt(0).toUpperCase() + accion.slice(1)} este cliente?`)) return;
+    startTransition(async () => {
+      const supabase = createClient();
+      const { error: err } = await supabase
+        .from("clientes").update({ activo: !activo }).eq("id", id);
+      if (err) { setError(err.message); return; }
+      setClientes(prev => prev.map(c => c.id === id ? { ...c, activo: !activo } : c));
+    });
+  };
 
   const guardarNuevo = (data: Record<string, string>) => {
     setError(null);
@@ -288,12 +303,20 @@ export function ClientesUI({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-ink">Clientes</h1>
-          <p className="text-sm text-ink/50">{clientes.length} registrado{clientes.length !== 1 ? "s" : ""}</p>
+          <p className="text-sm text-ink/50">{clientes.filter(c => c.activo).length} activo{clientes.filter(c=>c.activo).length !== 1 ? "s" : ""}{clientes.filter(c=>!c.activo).length > 0 ? ` · ${clientes.filter(c=>!c.activo).length} inactivo${clientes.filter(c=>!c.activo).length !== 1 ? "s" : ""}` : ""}</p>
         </div>
-        <button onClick={() => { setMostrarForm(true); setEditando(null); }}
-          className="flex items-center gap-2 rounded-xl bg-primario px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition">
-          <Plus size={16} /> Nuevo cliente
-        </button>
+        <div className="flex items-center gap-2">
+          {clientes.some(c => !c.activo) && (
+            <button onClick={() => setVerInactivos(v => !v)}
+              className={`text-xs px-3 py-1.5 rounded-lg border transition ${verInactivos ? "border-primario text-primario bg-primario/5" : "border-linea text-ink/50 hover:bg-ink/[0.02]"}`}>
+              {verInactivos ? "Ocultar inactivos" : "Ver inactivos"}
+            </button>
+          )}
+          <button onClick={() => { setMostrarForm(true); setEditando(null); }}
+            className="flex items-center gap-2 rounded-xl bg-primario px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition">
+            <Plus size={16} /> Nuevo cliente
+          </button>
+        </div>
       </div>
 
       {error && <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
@@ -338,12 +361,13 @@ export function ClientesUI({
                   onCancelar={() => setEditando(null)} cargando={pending} />
               </div>
             ) : (
-              <div className="p-4">
+              <div className={`p-4 ${!c.activo ? "opacity-60" : ""}`}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-semibold text-ink">{c.nombre}</p>
                       <Badge tipo={c.tipo_persona} />
+                      {!c.activo && <span className="text-[10px] font-semibold text-ink/40 bg-ink/5 rounded-full px-2 py-0.5">Inactivo</span>}
                       {c.bloqueado && <span className="text-[10px] font-semibold text-red-500 bg-red-50 rounded-full px-2 py-0.5">Bloqueado</span>}
                     </div>
                     <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
@@ -363,9 +387,18 @@ export function ClientesUI({
                       className="rounded-lg p-1.5 text-ink/40 hover:text-primario hover:bg-primario/5 transition">
                       <Pencil size={15} />
                     </button>
-                    <button onClick={() => borrar(c.id, c.nombre)}
-                      className="rounded-lg p-1.5 text-ink/40 hover:text-red-500 hover:bg-red-50 transition">
-                      <Trash2 size={15} />
+                    {/* Desactivar si tiene pedidos, borrar si no */}
+                    <button
+                      onClick={() => c.activo !== undefined
+                        ? toggleActivo(c.id, c.activo)
+                        : borrar(c.id, c.nombre)}
+                      title={c.activo ? "Desactivar cliente" : "Reactivar cliente"}
+                      className={`rounded-lg p-1.5 transition ${
+                        c.activo === false
+                          ? "text-verde hover:bg-verde/5"
+                          : "text-ink/40 hover:text-amber-500 hover:bg-amber-50"
+                      }`}>
+                      {c.activo === false ? <Check size={15} /> : <Trash2 size={15} />}
                     </button>
                   </div>
                 </div>

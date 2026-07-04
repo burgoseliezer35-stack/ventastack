@@ -33,7 +33,7 @@ export default async function ClientesPage() {
 
   const { data: clientes } = await supabase
     .from("clientes")
-    .select("id, nombre, tipo_persona, rfc, telefono, whatsapp, email, direccion, ciudad, codigo_postal, observaciones, limite_credito, saldo_actual, bloqueado, vendedor_id")
+    .select("id, nombre, tipo_persona, rfc, telefono, whatsapp, email, direccion, ciudad, codigo_postal, observaciones, limite_credito, saldo_actual, bloqueado, activo, vendedor_id")
     .order("nombre");
 
   const { data: vendedores } = await supabase
