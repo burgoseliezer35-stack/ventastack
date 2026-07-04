@@ -44,7 +44,7 @@ export default async function TransferenciaPage() {
   if (error || !data?.claims) redirect("/auth/login");
 
   const { data: miPerfil } = await supabase
-    .from("profiles").select("role, company_id").eq("id", data.claims.sub as string).single();
+    .from("profiles").select("role, company_id").eq("id", data.claims.sub as string).limit(1).maybeSingle();
   if (miPerfil?.role !== "admin") redirect("/protected");
 
   const { data: almacenes } = await supabase
