@@ -33,6 +33,7 @@ type Props = {
   rol: string;
   esAdmin: boolean;
   esVendedor: boolean;
+  modulos: string[];
   nombreEmpresa?: string;
   tipoNegocio?: string;
   tiposNegocio?: string[];
@@ -43,108 +44,81 @@ type ItemNav =
   | { tipo: "enlace"; href: string; etiqueta: string; Icono: LucideIcon }
   | { tipo: "grupo"; etiqueta: string; Icono: LucideIcon; items: SubEnlace[] };
 
-export function Sidebar({ nombre, rol, esAdmin, esVendedor, nombreEmpresa, tipoNegocio = "tienda", tiposNegocio = [] }: Props) {
+export function Sidebar({ nombre, rol, esAdmin, modulos, nombreEmpresa, tipoNegocio = "tienda", tiposNegocio = [] }: Props) {
   const [abierto, setAbierto] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
 
   const inicial = nombre.charAt(0).toUpperCase() || "?";
 
+  // Helper: ¿puede ver este módulo?
+  const puede = (modulo: string) => modulos.includes(modulo);
+
+  const esDistribuidor = tiposNegocio.includes("distribuidor") || tipoNegocio === "distribuidor";
+
   const enlaces: ItemNav[] = [
     { tipo: "enlace", href: "/protected", etiqueta: "Dashboard", Icono: LayoutDashboard },
-    { tipo: "enlace", href: "/protected/pos", etiqueta: "Punto de venta", Icono: Store },
-    {
-      tipo: "enlace",
-      href: "/protected/pedidos",
-      etiqueta: "Historial de ventas",
-      Icono: History,
-    },
-    {
-      tipo: "enlace",
-      href: "/protected/cotizaciones",
-      etiqueta: "Cotizaciones",
-      Icono: FileText,
-    },
-    {
-      tipo: "enlace",
-      href: "/protected/facturas",
-      etiqueta: "Facturas CFDI",
-      Icono: FileText,
-    },
-    {
-      tipo: "enlace",
-      href: "/protected/verificador",
-      etiqueta: "Verificador de precios",
-      Icono: ScanLine,
-    },
   ];
-  // La caja y las devoluciones son trabajo de mostrador — las ve
-  // admin y cajero, pero no el vendedor en ruta.
-  if (!esVendedor) {
+
+  if (puede("pos")) {
+    enlaces.push({ tipo: "enlace", href: "/protected/pos", etiqueta: "Punto de venta", Icono: Store });
+  }
+  if (puede("historial")) {
+    enlaces.push({ tipo: "enlace", href: "/protected/pedidos", etiqueta: "Historial de ventas", Icono: History });
+  }
+  if (puede("cotizaciones")) {
+    enlaces.push({ tipo: "enlace", href: "/protected/cotizaciones", etiqueta: "Cotizaciones", Icono: FileText });
+  }
+  if (puede("pedidos_ruta")) {
+    enlaces.push({ tipo: "enlace", href: "/protected/mis-clientes", etiqueta: "Mis pedidos", Icono: MapPin });
+  }
+  if (esAdmin) {
+    enlaces.push({ tipo: "enlace", href: "/protected/facturas", etiqueta: "Facturas CFDI", Icono: FileText });
+  }
+  if (puede("verificador")) {
+    enlaces.push({ tipo: "enlace", href: "/protected/verificador", etiqueta: "Verificador de precios", Icono: ScanLine });
+  }
+  if (puede("devoluciones")) {
+    enlaces.push({ tipo: "enlace", href: "/protected/devoluciones", etiqueta: "Devoluciones", Icono: Undo2 });
+  }
+  if (puede("caja")) {
     enlaces.push({
-      tipo: "enlace",
-      href: "/protected/devoluciones",
-      etiqueta: "Devoluciones",
-      Icono: Undo2,
-    });
-    enlaces.push({
-      tipo: "grupo",
-      etiqueta: "Caja",
-      Icono: Wallet,
+      tipo: "grupo", etiqueta: "Caja", Icono: Wallet,
       items: [
         { href: "/protected/caja", etiqueta: "Caja del día" },
         { href: "/protected/caja/historial", etiqueta: "Historial" },
       ],
     });
   }
-  if (esAdmin) {
+  if (puede("reportes")) {
+    enlaces.push({ tipo: "enlace", href: "/protected/reportes", etiqueta: "Reportes", Icono: BarChart3 });
+  }
+  if (puede("rutas") && esDistribuidor) {
+    enlaces.push({ tipo: "enlace", href: "/protected/rutas", etiqueta: "Ver rutas", Icono: MapPin });
+  }
+  if (puede("almacenes") && esDistribuidor) {
+    enlaces.push({ tipo: "enlace", href: "/protected/almacenes", etiqueta: "Almacenes", Icono: Package });
+  }
+  if (puede("productos")) {
     enlaces.push({
-      tipo: "enlace",
-      href: "/protected/reportes",
-      etiqueta: "Reportes",
-      Icono: BarChart3,
-    });
-
-    // Mapa de rutas solo para distribuidores
-    const esDistribuidor = tiposNegocio.includes("distribuidor") || tipoNegocio === "distribuidor";
-    if (esDistribuidor) {
-      enlaces.push({
-        tipo: "enlace",
-        href: "/protected/rutas",
-        etiqueta: "Ver rutas",
-        Icono: MapPin,
-      });
-      enlaces.push({
-        tipo: "enlace",
-        href: "/protected/almacenes",
-        etiqueta: "Almacenes",
-        Icono: Package,
-      });
-    }
-
-    enlaces.push({
-      tipo: "grupo",
-      etiqueta: "Productos",
-      Icono: Package,
+      tipo: "grupo", etiqueta: "Productos", Icono: Package,
       items: [
         { href: "/protected/productos", etiqueta: "Catálogo" },
         { href: "/protected/productos/categorias", etiqueta: "Categorías" },
       ],
     });
-
+  }
+  if (puede("compras")) {
     enlaces.push({
-      tipo: "grupo",
-      etiqueta: "Compras",
-      Icono: Truck,
+      tipo: "grupo", etiqueta: "Compras", Icono: Truck,
       items: [
         { href: "/protected/compras/nueva", etiqueta: "Recibir mercancía" },
         { href: "/protected/compras", etiqueta: "Historial" },
-        { href: "/protected/proveedores", etiqueta: "Proveedores" },
+        ...(puede("proveedores") ? [{ href: "/protected/proveedores", etiqueta: "Proveedores" }] : []),
       ],
     });
   }
-
-  if (esAdmin || esVendedor) {
+  if (puede("clientes")) {
     enlaces.push({
       tipo: "enlace",
       href: esAdmin ? "/protected/clientes" : "/protected/mis-clientes",
@@ -152,14 +126,16 @@ export function Sidebar({ nombre, rol, esAdmin, esVendedor, nombreEmpresa, tipoN
       Icono: Users,
     });
   }
-
-  if (esAdmin) {
+  if (puede("equipo")) {
     enlaces.push({ tipo: "enlace", href: "/protected/equipo", etiqueta: "Equipo", Icono: UserPlus });
+  }
+  if (puede("auditoria")) {
     enlaces.push({ tipo: "enlace", href: "/protected/auditoria", etiqueta: "Auditoría", Icono: ShieldCheck });
+  }
+  if (puede("configuracion")) {
     enlaces.push({ tipo: "enlace", href: "/protected/configuracion", etiqueta: "Configuración", Icono: Settings });
   }
-
-  // Turno disponible para cajeros también
+  // Turno para no-admin
   if (!esAdmin) {
     enlaces.push({ tipo: "enlace", href: "/protected/caja/turno", etiqueta: "Mi turno", Icono: Clock });
   }
