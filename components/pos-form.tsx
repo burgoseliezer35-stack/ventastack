@@ -23,7 +23,7 @@ type Producto = {
   unidad_medida: string;
   step_cantidad: number;
 };
-type Cliente = { id: string; nombre: string };
+type Cliente = { id: string; nombre: string; direccion?: string | null; ciudad?: string | null };
 type ItemCarrito = {
   producto_id: string;
   nombre: string;
@@ -864,7 +864,18 @@ export function PosForm({
             <select
               id="cliente"
               value={clienteId}
-              onChange={(e) => setClienteId(e.target.value)}
+              onChange={(e) => {
+                const id = e.target.value;
+                setClienteId(id);
+                // Si está en modo domicilio, precargar la dirección del cliente
+                if (esDomicilio && id) {
+                  const c = clientes.find(x => x.id === id);
+                  if (c?.direccion) {
+                    const dir = [c.direccion, c.ciudad].filter(Boolean).join(", ");
+                    setDireccionEntrega(dir);
+                  }
+                }
+              }}
               className="w-full rounded-md border border-white/20 bg-white/10 px-3 py-2 text-sm text-white outline-none [&>option]:text-ink"
             >
               <option value="">Público general</option>
@@ -883,7 +894,22 @@ export function PosForm({
                 <span className="text-xs font-medium text-white/80">Envío a domicilio</span>
                 <button
                   type="button"
-                  onClick={() => { setEsDomicilio(v => !v); setRepartidorId(""); setDireccionEntrega(""); }}
+                  onClick={() => {
+                    const nuevoEstado = !esDomicilio;
+                    setEsDomicilio(nuevoEstado);
+                    setRepartidorId("");
+                    if (nuevoEstado && clienteId) {
+                      const c = clientes.find(x => x.id === clienteId);
+                      if (c?.direccion) {
+                        const dir = [c.direccion, c.ciudad].filter(Boolean).join(", ");
+                        setDireccionEntrega(dir);
+                      } else {
+                        setDireccionEntrega("");
+                      }
+                    } else {
+                      setDireccionEntrega("");
+                    }
+                  }}
                   className={`relative inline-flex h-5 w-9 rounded-full transition-colors ${esDomicilio ? "bg-white" : "bg-white/20"}`}
                 >
                   <span className={`inline-block h-4 w-4 rounded-full bg-primario shadow transition-transform mt-0.5 ${esDomicilio ? "translate-x-4 ml-0.5" : "translate-x-0.5"}`} />
