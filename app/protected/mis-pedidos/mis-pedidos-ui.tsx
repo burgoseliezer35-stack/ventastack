@@ -4,8 +4,51 @@ import { useState, useTransition } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
   MapPin, Phone, Package, Truck, CheckCircle2, XCircle,
-  Clock, Banknote, CreditCard, ChevronDown, ChevronUp,
+  Clock, Banknote, CreditCard, ChevronDown, ChevronUp, Navigation,
 } from "lucide-react";
+
+// Abre el mapa nativo según el dispositivo del repartidor.
+// iOS → Apple Maps (waze://), Android → Google Maps.
+// Si tenemos coordenadas exactas las usamos; si no, geocodificamos
+// con OpenStreetMap Nominatim (gratis, sin API key) antes de abrir.
+async function abrirNavegacion(direccion: string, lat?: number | null, lng?: number | null) {
+  let destLat = lat;
+  let destLng = lng;
+
+  // Si no hay coordenadas, geocodificar con OSM Nominatim
+  if (!destLat || !destLng) {
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(direccion)}&format=json&limit=1&countrycodes=mx`;
+      const res = await fetch(url, { headers: { "Accept-Language": "es" } });
+      const data = await res.json();
+      if (data?.[0]) {
+        destLat = parseFloat(data[0].lat);
+        destLng = parseFloat(data[0].lon);
+      }
+    } catch { /* si falla, usar texto */ }
+  }
+
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+  if (destLat && destLng) {
+    // Coordenadas exactas — navegación perfecta
+    const dest = `${destLat},${destLng}`;
+    window.open(
+      isIOS
+        ? `maps://maps.apple.com/?daddr=${dest}&dirflg=d`
+        : `https://www.google.com/maps/dir/?api=1&destination=${dest}&travelmode=driving`,
+      "_blank"
+    );
+  } else {
+    // Fallback: texto de la dirección
+    window.open(
+      isIOS
+        ? `maps://maps.apple.com/?daddr=${encodeURIComponent(direccion)}&dirflg=d`
+        : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(direccion)}&travelmode=driving`,
+      "_blank"
+    );
+  }
+}
 
 type Item = { nombre: string; cantidad: number; precio: number };
 
@@ -14,6 +57,8 @@ type Pedido = {
   total: number;
   metodo_pago: string;
   direccion_entrega: string | null;
+  lat?: number | null;
+  lng?: number | null;
   estado_reparto: string | null;
   created_at: string;
   cliente_nombre: string;
@@ -129,11 +174,13 @@ export function MisPedidosUI({ pedidos: iniciales }: { pedidos: Pedido[] }) {
                 </a>
               )}
               {p.direccion_entrega && (
-                <a href={`https://maps.google.com/?q=${encodeURIComponent(p.direccion_entrega)}`}
-                  target="_blank" rel="noopener noreferrer"
-                  className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-linea py-2 text-xs font-medium text-ink hover:bg-ink/[0.03] transition">
-                  <MapPin size={13} /> Abrir en Maps
-                </a>
+                <button
+                  type="button"
+                  onClick={() => abrirNavegacion(p.direccion_entrega!, p.lat, p.lng)}
+                  className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-linea py-2 text-xs font-medium text-ink hover:bg-ink/[0.03] transition"
+                >
+                  <Navigation size={13} /> Navegar
+                </button>
               )}
             </div>
 
