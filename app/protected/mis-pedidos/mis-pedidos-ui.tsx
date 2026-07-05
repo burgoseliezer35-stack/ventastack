@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { createClient } from "@/lib/supabase/client";
 import {
   MapPin, Phone, Package, Truck, CheckCircle2, XCircle,
-  Clock, Banknote, CreditCard, ChevronDown, ChevronUp, Navigation,
+  Clock, Banknote, CreditCard, ChevronDown, ChevronUp,
+  Navigation, Camera, X, Send,
 } from "lucide-react";
 
 // Abre el mapa nativo según el dispositivo del repartidor.
@@ -88,20 +88,21 @@ export function MisPedidosUI({ pedidos: iniciales }: { pedidos: Pedido[] }) {
   const [expandido, setExpandido] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  // Foto de entrega: mapa pedidoId → { file, preview }
+  const [fotos, setFotos] = useState<Record<string, { file: File; preview: string }>>({});
+  const [entregando, setEntregando] = useState<string | null>(null);
 
   const activos = pedidos.filter(p => p.estado_reparto === "pendiente" || p.estado_reparto === "en_camino");
   const completados = pedidos.filter(p => p.estado_reparto === "entregado" || p.estado_reparto === "no_entregado");
 
-  const cambiarEstado = (id: string, nuevo: "en_camino" | "entregado" | "no_entregado") => {
-    const confirmaciones: Record<string, string> = {
-      en_camino: "¿Marcar que ya saliste con este pedido?",
-      entregado: "¿Confirmar que el pedido fue ENTREGADO al cliente?",
-      no_entregado: "¿El cliente no estaba? El pedido quedará para reprogramar.",
-    };
-    if (!confirm(confirmaciones[nuevo])) return;
-
+  const cambiarEstado = (id: string, nuevo: "en_camino" | "no_entregado") => {
+    const msg = nuevo === "en_camino"
+      ? "¿Marcar que ya saliste con este pedido?"
+      : "¿El cliente no estaba? El pedido quedará para reprogramar.";
+    if (!confirm(msg)) return;
     setError(null);
     startTransition(async () => {
+      const { createClient } = await import("@/lib/supabase/client");
       const supabase = createClient();
       const { error: err } = await supabase.rpc("actualizar_estado_reparto", {
         p_pedido_id: id,
@@ -110,6 +111,37 @@ export function MisPedidosUI({ pedidos: iniciales }: { pedidos: Pedido[] }) {
       if (err) { setError(err.message); return; }
       setPedidos(prev => prev.map(p => p.id === id ? { ...p, estado_reparto: nuevo } : p));
     });
+  };
+
+  const seleccionarFoto = (id: string, file: File) => {
+    const preview = URL.createObjectURL(file);
+    setFotos(prev => ({ ...prev, [id]: { file, preview } }));
+  };
+
+  const confirmarEntrega = async (id: string) => {
+    if (!confirm("¿Confirmar que el pedido fue ENTREGADO?")) return;
+    setEntregando(id);
+    setError(null);
+    try {
+      const fd = new FormData();
+      fd.append("pedido_id", id);
+      const foto = fotos[id];
+      if (foto) fd.append("foto", foto.file);
+
+      const res = await fetch("/api/reparto/entregar", { method: "POST", body: fd });
+      const data = await res.json();
+
+      if (!res.ok) { setError(data.error ?? "Error al registrar entrega"); return; }
+
+      setPedidos(prev => prev.map(p => p.id === id ? { ...p, estado_reparto: "entregado" } : p));
+      // Liberar el object URL
+      if (foto) URL.revokeObjectURL(foto.preview);
+      setFotos(prev => { const next = { ...prev }; delete next[id]; return next; });
+    } catch {
+      setError("Error de conexión. Intenta de nuevo.");
+    } finally {
+      setEntregando(null);
+    }
   };
 
   const TarjetaPedido = ({ p }: { p: Pedido }) => {
@@ -187,20 +219,52 @@ export function MisPedidosUI({ pedidos: iniciales }: { pedidos: Pedido[] }) {
             {/* Botones de estado */}
             {p.estado_reparto === "pendiente" && (
               <button onClick={() => cambiarEstado(p.id, "en_camino")} disabled={pending}
-                className="w-full rounded-xl bg-primario py-3 text-sm font-bold text-white hover:opacity-90 transition disabled:opacity-50">
-                🚚 Salir a entregar
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-primario py-3 text-sm font-semibold text-white hover:opacity-90 transition disabled:opacity-50">
+                <Truck size={15} /> Salir a entregar
               </button>
             )}
             {p.estado_reparto === "en_camino" && (
-              <div className="flex gap-2">
-                <button onClick={() => cambiarEstado(p.id, "entregado")} disabled={pending}
-                  className="flex-1 rounded-xl bg-verde py-3 text-sm font-bold text-white hover:opacity-90 transition disabled:opacity-50">
-                  ✓ Entregado
-                </button>
-                <button onClick={() => cambiarEstado(p.id, "no_entregado")} disabled={pending}
-                  className="rounded-xl border border-red-200 px-4 py-3 text-sm font-medium text-red-500 hover:bg-red-50 transition disabled:opacity-50">
-                  No estaba
-                </button>
+              <div className="flex flex-col gap-2">
+                {/* Foto de comprobante */}
+                {fotos[p.id] ? (
+                  <div className="relative rounded-xl overflow-hidden border border-linea">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={fotos[p.id].preview} alt="Foto de entrega" className="w-full h-40 object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => { URL.revokeObjectURL(fotos[p.id].preview); setFotos(prev => { const n = {...prev}; delete n[p.id]; return n; }); }}
+                      className="absolute top-2 right-2 rounded-full bg-black/50 p-1 text-white hover:bg-black/70 transition"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-linea py-3 text-sm text-ink/60 cursor-pointer hover:bg-ink/[0.02] transition">
+                    <Camera size={15} />
+                    <span>Tomar foto de comprobante</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="sr-only"
+                      onChange={e => { const f = e.target.files?.[0]; if (f) seleccionarFoto(p.id, f); }}
+                    />
+                  </label>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => confirmarEntrega(p.id)}
+                    disabled={entregando === p.id}
+                    className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-verde py-3 text-sm font-semibold text-white hover:opacity-90 transition disabled:opacity-50"
+                  >
+                    <Send size={14} />
+                    {entregando === p.id ? "Enviando..." : fotos[p.id] ? "Confirmar y enviar foto" : "Confirmar entrega"}
+                  </button>
+                  <button onClick={() => cambiarEstado(p.id, "no_entregado")} disabled={!!entregando}
+                    className="rounded-xl border border-red-200 px-4 py-3 text-sm font-medium text-red-500 hover:bg-red-50 transition disabled:opacity-50">
+                    No estaba
+                  </button>
+                </div>
               </div>
             )}
           </div>
