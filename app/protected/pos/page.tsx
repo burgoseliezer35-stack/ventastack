@@ -8,21 +8,20 @@ export default async function PosPage() {
   const supabase = await createClient();
 
   const { data, error } = await supabase.auth.getClaims();
-  if (error || !data?.claims) {
-    redirect("/auth/login");
-  }
+  if (error || !data?.claims) redirect("/auth/login");
 
   const userId = data.claims.sub as string;
   const { data: miPerfil } = await supabase
     .from("profiles")
     .select("company_id")
     .eq("id", userId)
-    .single();
+    .limit(1)
+    .maybeSingle();
 
   const { data: empresa } = await supabase
     .from("companies")
-    .select("iva_porcentaje, iva_incluido, ieps_habilitado, ieps_porcentaje")
-    .eq("id", miPerfil?.company_id)
+    .select("precios_con_iva_incluido, tipos_negocio")
+    .eq("id", miPerfil?.company_id ?? "")
     .single();
 
   const { data: productosRaw } = await supabase
@@ -49,28 +48,38 @@ export default async function PosPage() {
     .eq("activo", true)
     .order("nombre");
 
+  // Repartidores disponibles — solo si es empresa distribuidora
+  const tiposNegocio = (empresa as { tipos_negocio?: string[] } | null)?.tipos_negocio ?? [];
+  const esDistribuidor = tiposNegocio.includes("distribuidor");
+
+  const { data: repartidores } = esDistribuidor
+    ? await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .eq("company_id", miPerfil?.company_id ?? "")
+        .eq("role", "vendedor")
+        .order("full_name")
+    : { data: [] };
+
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-xl font-bold text-ink">Punto de venta</h1>
-
       {productos.length ? (
         <PosForm
           productos={productos}
           clientes={clientes ?? []}
           geminiDisponible={geminiDisponible()}
-          ivaPorcentaje={empresa?.iva_porcentaje ?? 0}
-          ivaIncluido={empresa?.iva_incluido ?? true}
-          iepsHabilitado={empresa?.ieps_habilitado ?? false}
-          iepsPorcentaje={empresa?.ieps_porcentaje ?? 0}
+          ivaIncluido={(empresa as { precios_con_iva_incluido?: boolean } | null)?.precios_con_iva_incluido ?? true}
           companyId={miPerfil?.company_id ?? ""}
+          esDistribuidor={esDistribuidor}
+          repartidores={repartidores ?? []}
         />
       ) : (
         <p className="max-w-sm text-sm text-ink/60">
-          Todavía no tienes productos en tu catálogo. Agrega al menos uno en{" "}
+          Todavía no tienes productos en tu catálogo.{" "}
           <Link href="/protected/productos" className="text-primario hover:underline">
-            Catálogo
-          </Link>{" "}
-          antes de vender.
+            Agregar productos
+          </Link>
         </p>
       )}
     </div>
