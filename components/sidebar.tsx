@@ -70,7 +70,7 @@ export function Sidebar({ nombre, rol, esAdmin, modulos, nombreEmpresa, tipoNego
     enlaces.push({ tipo: "enlace", href: "/protected/cotizaciones", etiqueta: "Cotizaciones", Icono: FileText });
   }
   if (puede("pedidos_ruta")) {
-    enlaces.push({ tipo: "enlace", href: "/protected/mis-clientes", etiqueta: "Mis pedidos", Icono: MapPin });
+    enlaces.push({ tipo: "enlace", href: "/protected/mis-pedidos", etiqueta: "Mis entregas", Icono: MapPin });
   }
   if (esAdmin) {
     enlaces.push({ tipo: "enlace", href: "/protected/facturas", etiqueta: "Facturas CFDI", Icono: FileText });
