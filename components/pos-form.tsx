@@ -49,20 +49,18 @@ export function PosForm({
   productos,
   clientes,
   geminiDisponible,
-  ivaPorcentaje = 0,
   ivaIncluido = true,
-  iepsHabilitado = false,
-  iepsPorcentaje = 0,
   companyId = "",
+  esDistribuidor = false,
+  repartidores = [],
 }: {
   productos: Producto[];
   clientes: Cliente[];
   geminiDisponible: boolean;
-  ivaPorcentaje?: number;
   ivaIncluido?: boolean;
-  iepsHabilitado?: boolean;
-  iepsPorcentaje?: number;
   companyId?: string;
+  esDistribuidor?: boolean;
+  repartidores?: { id: string; full_name: string }[];
 }) {
   const [carrito, setCarritoRaw] = useState<ItemCarrito[]>(() => {
     // Al montar, intentamos recuperar el carrito de esta sesión —
@@ -96,6 +94,10 @@ export function PosForm({
   const [error, setError] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  // Módulo de reparto — solo visible si esDistribuidor
+  const [esDomicilio, setEsDomicilio] = useState(false);
+  const [repartidorId, setRepartidorId] = useState("");
+  const [direccionEntrega, setDireccionEntrega] = useState("");
   const [grabando, setGrabando] = useState(false);
   const [procesandoVoz, setProcesandoVoz] = useState(false);
   const [procesandoUpsell, setProcesandoUpsell] = useState(false);
@@ -501,7 +503,10 @@ export function PosForm({
         p_metodo_pago: metodoPago,
         p_efectivo_recibido: efectivoNum,
         p_cambio: cambioNum,
-        p_total: total, // total real con IVA/IEPS calculado en el cliente
+        p_total: total,
+        p_es_domicilio: esDomicilio,
+        p_repartidor_id: esDomicilio && repartidorId ? repartidorId : null,
+        p_direccion_entrega: esDomicilio && direccionEntrega ? direccionEntrega : null,
         p_items: carrito.map((i) => ({
           producto_id: i.producto_id,
           cantidad: i.cantidad,
@@ -826,16 +831,18 @@ export function PosForm({
           <div>
             <p className="text-xs uppercase tracking-wide text-white/70">Total a cobrar</p>
             <p className="cifra text-3xl font-bold">${total.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</p>
-            {ivaPorcentaje > 0 && (
+            {(montoIva > 0 || Object.values(desglosePorTasa).some(t => t.monto > 0)) && (
               <div className="mt-1 text-xs text-white/70 space-y-0.5">
                 <div className="flex justify-between">
                   <span>Subtotal{ivaIncluido ? " (IVA incl.)" : ""}:</span>
                   <span className="cifra">${baseGravable.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
                 </div>
+                {montoIva > 0 && (
                 <div className="flex justify-between">
-                  <span>IVA {ivaPorcentaje}%:</span>
+                  <span>IVA:</span>
                   <span className="cifra">${montoIva.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
                 </div>
+                )}
                 {/* Desglose por tasa — como Aurrera */}
                 {Object.values(desglosePorTasa)
                   .filter(t => t.tipo === "IEPS" && t.monto > 0)
@@ -868,6 +875,43 @@ export function PosForm({
               ))}
             </select>
           </div>
+
+          {/* Toggle de envío a domicilio — solo para empresas distribuidoras */}
+          {esDistribuidor && (
+            <div className="flex flex-col gap-2">
+              <label className="flex items-center justify-between cursor-pointer">
+                <span className="text-xs font-medium text-white/80">Envío a domicilio</span>
+                <button
+                  type="button"
+                  onClick={() => { setEsDomicilio(v => !v); setRepartidorId(""); setDireccionEntrega(""); }}
+                  className={`relative inline-flex h-5 w-9 rounded-full transition-colors ${esDomicilio ? "bg-white" : "bg-white/20"}`}
+                >
+                  <span className={`inline-block h-4 w-4 rounded-full bg-primario shadow transition-transform mt-0.5 ${esDomicilio ? "translate-x-4 ml-0.5" : "translate-x-0.5"}`} />
+                </button>
+              </label>
+              {esDomicilio && (
+                <>
+                  <select
+                    value={repartidorId}
+                    onChange={e => setRepartidorId(e.target.value)}
+                    className="w-full rounded-md border border-white/20 bg-white/10 px-3 py-2 text-sm text-white outline-none [&>option]:text-ink"
+                  >
+                    <option value="">— Seleccionar repartidor —</option>
+                    {repartidores.map(r => (
+                      <option key={r.id} value={r.id}>{r.full_name}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    value={direccionEntrega}
+                    onChange={e => setDireccionEntrega(e.target.value)}
+                    placeholder="Dirección de entrega"
+                    className="w-full rounded-md border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-white/40 outline-none"
+                  />
+                </>
+              )}
+            </div>
+          )}
 
           <div>
             <label htmlFor="metodoPago" className="mb-1 block text-xs font-medium text-white/80">
