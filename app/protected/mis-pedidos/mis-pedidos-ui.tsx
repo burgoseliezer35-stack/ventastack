@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import {
   MapPin, Phone, Package, Truck, CheckCircle2, XCircle,
   Clock, Banknote, CreditCard, ChevronDown, ChevronUp,
-  Navigation, Camera, X, Send,
+  Navigation, Camera, X, Send, Route, Loader2,
 } from "lucide-react";
 
 // Abre el mapa nativo según el dispositivo del repartidor.
@@ -88,9 +88,62 @@ export function MisPedidosUI({ pedidos: iniciales }: { pedidos: Pedido[] }) {
   const [expandido, setExpandido] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  // Foto de entrega: mapa pedidoId → { file, preview }
   const [fotos, setFotos] = useState<Record<string, { file: File; preview: string }>>({});
   const [entregando, setEntregando] = useState<string | null>(null);
+  const [optimizando, setOptimizando] = useState(false);
+  const [resumenRuta, setResumenRuta] = useState<{ km: number; min: number } | null>(null);
+
+  const optimizarRuta = async () => {
+    setOptimizando(true);
+    setError(null);
+    try {
+      // Obtener ubicación actual del repartidor
+      const pos = await new Promise<GeolocationPosition>((res, rej) =>
+        navigator.geolocation.getCurrentPosition(res, rej, { timeout: 8000 })
+      );
+
+      const pendientes = activos.filter(p => p.direccion_entrega);
+      const res = await fetch("/api/reparto/optimizar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pedidos: pendientes.map(p => ({
+            id: p.id,
+            direccion_entrega: p.direccion_entrega,
+            lat: p.lat,
+            lng: p.lng,
+          })),
+          repartidor_lat: pos.coords.latitude,
+          repartidor_lng: pos.coords.longitude,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) { setError(data.error ?? "Error al optimizar"); return; }
+
+      // Reordenar pedidos según el orden óptimo
+      const orden: string[] = data.orden;
+      setPedidos(prev => {
+        const mapa = Object.fromEntries(prev.map(p => [p.id, p]));
+        const actOrdenados = orden
+          .map(id => mapa[id])
+          .filter(Boolean);
+        const completados = prev.filter(p =>
+          p.estado_reparto === "entregado" || p.estado_reparto === "no_entregado"
+        );
+        return [...actOrdenados, ...completados];
+      });
+
+      setResumenRuta({ km: data.distancia_km, min: data.duracion_min });
+    } catch (err) {
+      const msg = err instanceof GeolocationPositionError
+        ? "Necesitas activar el GPS para optimizar la ruta"
+        : "Error al calcular la ruta óptima";
+      setError(msg);
+    } finally {
+      setOptimizando(false);
+    }
+  };
 
   const activos = pedidos.filter(p => p.estado_reparto === "pendiente" || p.estado_reparto === "en_camino");
   const completados = pedidos.filter(p => p.estado_reparto === "entregado" || p.estado_reparto === "no_entregado");
@@ -144,7 +197,7 @@ export function MisPedidosUI({ pedidos: iniciales }: { pedidos: Pedido[] }) {
     }
   };
 
-  const TarjetaPedido = ({ p }: { p: Pedido }) => {
+  const TarjetaPedido = ({ p, parada }: { p: Pedido; parada?: number }) => {
     const abierto = expandido === p.id;
     const esEfectivo = p.metodo_pago === "efectivo";
     const folio = p.id.replace(/-/g, "").slice(0, 8).toUpperCase();
@@ -159,6 +212,11 @@ export function MisPedidosUI({ pedidos: iniciales }: { pedidos: Pedido[] }) {
         >
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
+              {parada && resumenRuta && (
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-primario text-white text-[10px] font-bold shrink-0">
+                  {parada}
+                </span>
+              )}
               <p className="font-semibold text-ink truncate">{p.cliente_nombre}</p>
               <BadgeEstado estado={p.estado_reparto} />
             </div>
@@ -275,11 +333,32 @@ export function MisPedidosUI({ pedidos: iniciales }: { pedidos: Pedido[] }) {
 
   return (
     <div className="flex flex-col gap-6 max-w-lg mx-auto w-full">
-      <div>
-        <h1 className="text-xl font-bold text-ink">Mis entregas</h1>
-        <p className="text-sm text-ink/50">
-          {activos.length} pendiente{activos.length !== 1 ? "s" : ""} de entregar
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-ink">Mis entregas</h1>
+          <p className="text-sm text-ink/50">
+            {activos.length} pendiente{activos.length !== 1 ? "s" : ""} de entregar
+          </p>
+          {resumenRuta && (
+            <p className="text-xs text-primario mt-0.5 font-medium">
+              Ruta optimizada · {resumenRuta.km} km · ~{resumenRuta.min} min
+            </p>
+          )}
+        </div>
+        {/* Botón de optimización — solo si hay 2+ entregas con dirección */}
+        {activos.filter(p => p.direccion_entrega).length >= 2 && (
+          <button
+            type="button"
+            onClick={optimizarRuta}
+            disabled={optimizando}
+            className="flex items-center gap-1.5 rounded-xl border border-primario px-3 py-2 text-xs font-semibold text-primario hover:bg-primario/5 transition disabled:opacity-50 shrink-0"
+          >
+            {optimizando
+              ? <><Loader2 size={13} className="animate-spin" /> Calculando...</>
+              : <><Route size={13} /> Optimizar ruta</>
+            }
+          </button>
+        )}
       </div>
 
       {error && <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
@@ -292,7 +371,7 @@ export function MisPedidosUI({ pedidos: iniciales }: { pedidos: Pedido[] }) {
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          {activos.map(p => <TarjetaPedido key={p.id} p={p} />)}
+          {activos.map((p, idx) => <TarjetaPedido key={p.id} p={p} parada={idx + 1} />)}
         </div>
       )}
 
