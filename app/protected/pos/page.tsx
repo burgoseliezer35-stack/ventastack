@@ -20,7 +20,7 @@ export default async function PosPage() {
 
   const { data: empresa } = await supabase
     .from("companies")
-    .select("precios_con_iva_incluido, tipos_negocio")
+    .select("precios_con_iva_incluido, tipos_negocio, formato_direccion")
     .eq("id", miPerfil?.company_id ?? "")
     .single();
 
@@ -44,13 +44,13 @@ export default async function PosPage() {
 
   const { data: clientes } = await supabase
     .from("clientes")
-    .select("id, nombre, direccion, ciudad")
+    .select("id, nombre, telefono, direccion, ciudad, codigo_postal, dir_calle_principal, dir_entre1, dir_entre2, dir_numero, dir_colonia, dir_municipio, dir_estado")
     .eq("activo", true)
     .order("nombre");
 
-  // Repartidores disponibles — solo si es empresa distribuidora
   const tiposNegocio = (empresa as { tipos_negocio?: string[] } | null)?.tipos_negocio ?? [];
   const esDistribuidor = tiposNegocio.includes("distribuidor");
+  const formatoDireccion = (empresa as { formato_direccion?: string } | null)?.formato_direccion ?? "general";
 
   const { data: repartidores } = esDistribuidor
     ? await supabase
@@ -73,6 +73,7 @@ export default async function PosPage() {
           companyId={miPerfil?.company_id ?? ""}
           esDistribuidor={esDistribuidor}
           repartidores={repartidores ?? []}
+          formatoDireccion={formatoDireccion as "general" | "merida" | "libre"}
         />
       ) : (
         <p className="max-w-sm text-sm text-ink/60">
