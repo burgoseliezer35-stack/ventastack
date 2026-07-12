@@ -15,33 +15,32 @@ export type CPResult = {
   colonias: string[];
 };
 
-// ── Proveedor 1: mexico-api.devaleff.com ─────────────────────
-// Open source, sin API key, sin límites declarados.
-async function consultarMexicoAPI(cp: string): Promise<CPResult | null> {
+// ── Proveedor 1: Postali (postali.app) ───────────────────────
+// Sin API key, sin registro, sin límites. Datos de SEPOMEX oficial.
+// Cacheado en Cloudflare — rápido desde México.
+async function consultarPostali(cp: string): Promise<CPResult | null> {
   try {
     const res = await fetch(
-      `https://mexico-api.devaleff.com/api/codigo-postal/${cp}`,
+      `https://postali.app/api/v1/cp/${cp}`,
       {
         headers: { "Accept": "application/json" },
-        next: { revalidate: 86400 }, // caché 24h
+        next: { revalidate: 86400 },
       }
     );
     if (!res.ok) return null;
     const data = await res.json();
-    if (!data?.data?.length) return null;
+    if (!data?.municipio) return null;
 
-    // Cada registro es una colonia del mismo CP
-    const primero = data.data[0];
-    const colonias = data.data
-      .map((d: Record<string, string>) => d.d_asenta)
+    const colonias = (data.asentamientos ?? [])
+      .map((a: { nombre?: string }) => a.nombre)
       .filter(Boolean)
       .sort();
 
     return {
       cp,
-      municipio: primero.D_mnpio ?? "",
-      estado: primero.d_estado ?? "",
-      ciudad: primero.d_ciudad ?? primero.D_mnpio ?? "",
+      municipio: data.municipio ?? "",
+      estado: data.estado ?? "",
+      ciudad: data.asentamientos?.[0]?.ciudad ?? data.municipio ?? "",
       colonias,
     };
   } catch {
@@ -101,10 +100,10 @@ export async function GET(
     );
   }
 
-  // Intentar proveedor principal
-  let resultado = await consultarMexicoAPI(cp);
+  // Intentar Postali primero (sin API key, SEPOMEX oficial)
+  let resultado = await consultarPostali(cp);
 
-  // Si falla, intentar fallback
+  // Si falla, intentar codigos.zip (requiere CODIGOS_ZIP_API_KEY en .env)
   if (!resultado) {
     resultado = await consultarCodigosZip(cp);
   }
