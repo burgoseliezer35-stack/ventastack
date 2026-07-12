@@ -23,7 +23,21 @@ type Producto = {
   unidad_medida: string;
   step_cantidad: number;
 };
-type Cliente = { id: string; nombre: string; direccion?: string | null; ciudad?: string | null };
+type Cliente = {
+  id: string;
+  nombre: string;
+  telefono?: string | null;
+  direccion?: string | null;
+  ciudad?: string | null;
+  codigo_postal?: string | null;
+  dir_calle_principal?: string | null;
+  dir_entre1?: string | null;
+  dir_entre2?: string | null;
+  dir_numero?: string | null;
+  dir_colonia?: string | null;
+  dir_municipio?: string | null;
+  dir_estado?: string | null;
+};
 type ItemCarrito = {
   producto_id: string;
   nombre: string;
@@ -45,14 +59,17 @@ function precioParaCantidad(producto: Producto, cantidad: number): number {
 
 import { useOfflineMode } from "@/lib/offline-mode";
 
+import { ClienteSheet } from "@/components/cliente-sheet";
+
 export function PosForm({
   productos,
-  clientes,
+  clientes: clientesIniciales,
   geminiDisponible,
   ivaIncluido = true,
   companyId = "",
   esDistribuidor = false,
   repartidores = [],
+  formatoDireccion = "general",
 }: {
   productos: Producto[];
   clientes: Cliente[];
@@ -61,6 +78,7 @@ export function PosForm({
   companyId?: string;
   esDistribuidor?: boolean;
   repartidores?: { id: string; full_name: string }[];
+  formatoDireccion?: "general" | "merida" | "libre";
 }) {
   const [carrito, setCarritoRaw] = useState<ItemCarrito[]>(() => {
     // Al montar, intentamos recuperar el carrito de esta sesión —
@@ -94,6 +112,8 @@ export function PosForm({
   const [error, setError] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [mostrarSheetCliente, setMostrarSheetCliente] = useState(false);
+  const [clientes, setClientes] = useState(clientesIniciales);
   // Módulo de reparto — solo visible si esDistribuidor
   const [esDomicilio, setEsDomicilio] = useState(false);
   const [repartidorId, setRepartidorId] = useState("");
@@ -454,6 +474,14 @@ export function PosForm({
     }
     if (metodoPago === "credito" && !clienteId) {
       setError("Una venta a crédito necesita un cliente seleccionado");
+      return;
+    }
+    if (esDomicilio && !repartidorId) {
+      setError("Selecciona un repartidor para el envío a domicilio");
+      return;
+    }
+    if (esDomicilio && !direccionEntrega.trim()) {
+      setError("Agrega la dirección de entrega — el repartidor la necesita para saber a dónde ir");
       return;
     }
     if (faltaEfectivo) {
@@ -861,30 +889,21 @@ export function PosForm({
             <label htmlFor="cliente" className="mb-1 block text-xs font-medium text-white/80">
               Cliente
             </label>
-            <select
+            <button
+              type="button"
               id="cliente"
-              value={clienteId}
-              onChange={(e) => {
-                const id = e.target.value;
-                setClienteId(id);
-                // Si está en modo domicilio, precargar la dirección del cliente
-                if (esDomicilio && id) {
-                  const c = clientes.find(x => x.id === id);
-                  if (c?.direccion) {
-                    const dir = [c.direccion, c.ciudad].filter(Boolean).join(", ");
-                    setDireccionEntrega(dir);
-                  }
-                }
-              }}
-              className="w-full rounded-md border border-white/20 bg-white/10 px-3 py-2 text-sm text-white outline-none [&>option]:text-ink"
+              onClick={() => setMostrarSheetCliente(true)}
+              className="w-full flex items-center justify-between rounded-md border border-white/20 bg-white/10 px-3 py-2 text-sm text-white"
             >
-              <option value="">Público general</option>
-              {clientes.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nombre}
-                </option>
-              ))}
-            </select>
+              <span className={clienteId ? "text-white" : "text-white/50"}>
+                {clienteId
+                  ? clientes.find(c => c.id === clienteId)?.nombre ?? "Público general"
+                  : "Público general"}
+              </span>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="text-white/50 shrink-0">
+                <path d="M2 4L6 8L10 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
           </div>
 
           {/* Toggle de envío a domicilio — solo para empresas distribuidoras */}
@@ -1065,6 +1084,31 @@ export function PosForm({
           </button>
         </div>
       </div>
+
+      {/* Sheet de selección/alta de cliente */}
+      {mostrarSheetCliente && (
+        <ClienteSheet
+          clientes={clientes}
+          companyId={companyId}
+          formatoDireccion={formatoDireccion}
+          onSeleccionar={(c) => {
+            setClienteId(c.id);
+            // Precargar dirección si es domicilio
+            if (esDomicilio && c.id) {
+              const dir = c.direccion
+                ? [c.direccion, c.ciudad].filter(Boolean).join(", ")
+                : "";
+              setDireccionEntrega(dir);
+            }
+            // Si llegó un cliente nuevo que no estaba, agregarlo a la lista
+            setClientes(prev =>
+              prev.find(x => x.id === c.id) ? prev : [...prev, c]
+            );
+            setMostrarSheetCliente(false);
+          }}
+          onCerrar={() => setMostrarSheetCliente(false)}
+        />
+      )}
     </div>
   );
 }
