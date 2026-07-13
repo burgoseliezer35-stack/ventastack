@@ -41,8 +41,10 @@ function construirDireccion(d: DireccionData, formato: string): string {
     }
     if (d.dir_numero) dir += ` #${d.dir_numero}`;
     if (d.dir_colonia) dir += `, ${d.dir_colonia}`;
-    if (d.cp) dir += `, ${d.cp}`;
-    if (d.dir_municipio) dir += ` ${d.dir_municipio}`;
+    // CP y municipio separados claramente para que Maps los interprete bien
+    if (d.cp && d.dir_municipio) dir += `, CP ${d.cp}, ${d.dir_municipio}`;
+    else if (d.cp) dir += `, CP ${d.cp}`;
+    else if (d.dir_municipio) dir += `, ${d.dir_municipio}`;
     if (d.dir_estado) dir += `, ${d.dir_estado}`;
     return dir;
   }
@@ -50,8 +52,9 @@ function construirDireccion(d: DireccionData, formato: string): string {
   let dir = d.dir_calle_principal;
   if (d.dir_numero) dir += ` ${d.dir_numero}`;
   if (d.dir_colonia) dir += `, ${d.dir_colonia}`;
-  if (d.cp) dir += `, ${d.cp}`;
-  if (d.dir_municipio) dir += ` ${d.dir_municipio}`;
+  if (d.cp && d.dir_municipio) dir += `, CP ${d.cp}, ${d.dir_municipio}`;
+  else if (d.cp) dir += `, CP ${d.cp}`;
+  else if (d.dir_municipio) dir += `, ${d.dir_municipio}`;
   if (d.dir_estado) dir += `, ${d.dir_estado}`;
   return dir;
 }
