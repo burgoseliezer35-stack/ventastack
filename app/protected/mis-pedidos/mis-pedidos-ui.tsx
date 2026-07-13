@@ -10,7 +10,8 @@ import {
 // Abre el mapa nativo según el dispositivo del repartidor.
 // iOS → Apple Maps (waze://), Android → Google Maps.
 // Si tenemos coordenadas exactas las usamos; si no, geocodificamos
-// con OpenStreetMap Nominatim (gratis, sin API key) antes de abrir.
+// Muestra el selector de apps de mapas (Google Maps, Apple Maps, Waze, etc.)
+// geo: es el protocolo universal — iOS y Android muestran las apps disponibles.
 async function abrirNavegacion(direccion: string, lat?: number | null, lng?: number | null) {
   let destLat = lat;
   let destLng = lng;
@@ -28,23 +29,14 @@ async function abrirNavegacion(direccion: string, lat?: number | null, lng?: num
     } catch { /* si falla, usar texto */ }
   }
 
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-
   if (destLat && destLng) {
-    // Coordenadas exactas — navegación perfecta
-    const dest = `${destLat},${destLng}`;
-    window.open(
-      isIOS
-        ? `maps://maps.apple.com/?daddr=${dest}&dirflg=d`
-        : `https://www.google.com/maps/dir/?api=1&destination=${dest}&travelmode=driving`,
-      "_blank"
-    );
+    // geo: muestra el diálogo del sistema con todas las apps instaladas
+    // (Google Maps, Apple Maps, Waze, HERE, etc.) — el repartidor elige
+    window.location.href = `geo:${destLat},${destLng}?q=${destLat},${destLng}(${encodeURIComponent(direccion)})`;
   } else {
-    // Fallback: texto de la dirección
+    // Sin coordenadas — Google Maps con texto como fallback
     window.open(
-      isIOS
-        ? `maps://maps.apple.com/?daddr=${encodeURIComponent(direccion)}&dirflg=d`
-        : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(direccion)}&travelmode=driving`,
+      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(direccion)}`,
       "_blank"
     );
   }
